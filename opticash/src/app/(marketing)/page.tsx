@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { routes, appName } from "@/lib/config";
 
+export const dynamic = "force-dynamic";
+
 export default function MarketingPage() {
   return (
     <div className="min-h-screen bg-background">
