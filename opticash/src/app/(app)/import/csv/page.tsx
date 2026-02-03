@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +35,33 @@ export default function CsvImportPage() {
     amount: "",
   });
   const [parsedRowsCount, setParsedRowsCount] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
+  const [scanCount, setScanCount] = useState(0);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const userId = data.session?.user?.id;
+        if (!userId) return;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_premium")
+          .eq("id", userId)
+          .maybeSingle();
+        setIsPremium(Boolean(profile?.is_premium));
+
+        const { count } = await supabase
+          .from("scans")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId);
+        setScanCount(count ?? 0);
+      } catch {
+        // ignore
+      }
+    };
+    void load();
+  }, []);
 
   const handleUpload = async () => {
     if (!file) {
@@ -97,6 +124,10 @@ export default function CsvImportPage() {
       new Set([mapping.date, mapping.label, mapping.amount]).size !== 3
     ) {
       toast.error("Chaque champ doit utiliser une colonne différente.");
+      return;
+    }
+    if (FEATURES.HARD_PAYWALL && !isPremium && scanCount >= 1) {
+      toast.error("Limite gratuite atteinte. Passe en Premium.");
       return;
     }
     setProcessing(true);
@@ -170,6 +201,20 @@ export default function CsvImportPage() {
               <a href="/upgrade" onClick={() => track("upgrade_clicked", { from: "import" })}>
                 Upgrade
               </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {FEATURES.HARD_PAYWALL && !isPremium && scanCount >= 1 && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Limite gratuite atteinte</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <span>Passage Premium requis pour importer d&apos;autres fichiers.</span>
+            <Button size="sm" asChild>
+              <a href="/upgrade">Upgrade</a>
             </Button>
           </CardContent>
         </Card>

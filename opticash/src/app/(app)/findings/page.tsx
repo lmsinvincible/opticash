@@ -90,7 +90,6 @@ export default function FindingsPage() {
   const [findings, setFindings] = useState<FindingRow[]>([]);
   const [category, setCategory] = useState<(typeof categoryFilters)[number]["value"]>("all");
   const [status, setStatus] = useState<(typeof statusTabs)[number]["value"]>("all");
-  const [selectedFinding, setSelectedFinding] = useState<FindingRow | null>(null);
   const [evidence, setEvidence] = useState<EvidenceRowType[]>([]);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
@@ -184,7 +183,6 @@ export default function FindingsPage() {
   );
 
   const handleOpenSheet = async (finding: FindingRow) => {
-    setSelectedFinding(finding);
     if (useDemo) {
       setEvidence(
         demoFindings
@@ -465,12 +463,12 @@ export default function FindingsPage() {
                       ) : (
                         <div className="space-y-2">
                           {evidence.map((row) => (
-                            <EvidenceRow
+                              <EvidenceRow
                               key={row.id}
                               evidence={{
                                 id: row.id,
                                 label: row.merchant ?? row.raw_label ?? "Transaction",
-                                amount: row.amount_cents ?? 0,
+                                amount: Number(row.amount_cents ?? 0),
                                 date: row.occurred_at ?? "",
                               }}
                             />

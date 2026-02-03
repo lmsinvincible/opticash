@@ -81,6 +81,19 @@ export const getLatestScan = async (userId: string) => {
   return data ?? null;
 };
 
+export const getProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, is_premium")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  return data ?? null;
+};
+
 export const getFindingsForScan = async (scanId: string) => {
   const { data, error } = await supabase
     .from("findings")

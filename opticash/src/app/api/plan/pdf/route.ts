@@ -25,6 +25,16 @@ export async function GET(request: NextRequest) {
   }
   const userId = userData.user.id;
 
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("is_premium")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profile?.is_premium) {
+    return new Response(JSON.stringify({ error: "Premium required" }), { status: 402 });
+  }
+
   const { data: planRow, error: planError } = await supabaseAdmin
     .from("plans")
     .select("*")
@@ -175,8 +185,9 @@ export async function GET(request: NextRequest) {
   );
 
   const pdfBytes = await pdfDoc.save();
+  const pdfBuffer = Buffer.from(pdfBytes);
 
-  return new Response(pdfBytes, {
+  return new Response(pdfBuffer, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": "attachment; filename=\"opticash-plan.pdf\"",

@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState<PlanRow | null>(null);
   const [scan, setScan] = useState<ScanRow | null>(null);
   const [items, setItems] = useState<PlanItem[]>([]);
-  const [allItems, setAllItems] = useState<PlanItem[]>([]);
+  const [allItems, setAllItems] = useState<Array<PlanItem & { status?: string }>>([]);
   const [useDemo, setUseDemo] = useState(false);
   const [creatingDemo, setCreatingDemo] = useState(false);
   const [resettingDemo, setResettingDemo] = useState(false);
@@ -81,7 +81,7 @@ export default function DashboardPage() {
         setItems(topItems as PlanItem[]);
         const allPlanItems = await getPlanItems(latestPlan.id);
         if (!mountedRef.current) return;
-        setAllItems(allPlanItems as PlanItem[]);
+          setAllItems(allPlanItems as Array<PlanItem & { status?: string }>);
         setDemoActive(false);
       } else {
         setItems([]);
@@ -182,7 +182,7 @@ export default function DashboardPage() {
         const topItems = await getTopPlanItems(latestPlan.id, 3);
         setItems(topItems as PlanItem[]);
         const allPlanItems = await getPlanItems(latestPlan.id);
-        setAllItems(allPlanItems as PlanItem[]);
+        setAllItems(allPlanItems as Array<PlanItem & { status?: string }>);
       }
       setDemoActive(true);
     } catch (err) {

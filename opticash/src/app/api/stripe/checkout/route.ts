@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const getPriceId = (interval: string | undefined) => {
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
   let customerId = profile?.stripe_customer_id ?? null;
 
   if (!customerId) {
+    const stripe = getStripe();
     const customer = await stripe.customers.create({
       email: email ?? undefined,
       metadata: { user_id: userId },
@@ -52,12 +53,13 @@ export async function POST(request: NextRequest) {
 
   const appUrl = process.env.APP_URL || "http://localhost:3000";
 
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${appUrl}/upgrade?success=1`,
-    cancel_url: `${appUrl}/upgrade`,
+    success_url: `${appUrl}/upgrade/success`,
+    cancel_url: `${appUrl}/upgrade/cancel`,
     allow_promotion_codes: true,
     metadata: { user_id: userId },
   });

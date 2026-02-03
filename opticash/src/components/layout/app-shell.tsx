@@ -49,7 +49,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         <aside className="hidden w-64 flex-col gap-6 rounded-xl border bg-background p-6 lg:flex">
           <div>
             <p className="text-xs uppercase text-muted-foreground">OptiCash</p>
-            <p className="text-lg font-semibold">Vue d'ensemble</p>
+            <p className="text-lg font-semibold">Vue d&apos;ensemble</p>
           </div>
           <Separator />
           <nav className="flex flex-col gap-2">

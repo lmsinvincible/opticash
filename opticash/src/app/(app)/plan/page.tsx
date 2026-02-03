@@ -13,6 +13,7 @@ import { track } from "@/lib/events";
 import {
   getLatestPlan,
   getLatestScan,
+  getProfile,
   getPlanItems,
   getSessionUser,
   updatePlanItemStatus,
@@ -57,6 +58,7 @@ export default function PlanPage() {
   const [plan, setPlan] = useState<PlanRow | null>(null);
   const [scan, setScan] = useState<ScanRow | null>(null);
   const [items, setItems] = useState<PlanItemRow[]>([]);
+  const [isPremium, setIsPremium] = useState(false);
   const [useDemo, setUseDemo] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
@@ -82,6 +84,10 @@ export default function PlanPage() {
         if (!mounted) return;
         setPlan(latestPlan as PlanRow | null);
         setScan(latestScan as ScanRow | null);
+
+        const profile = await getProfile(user.id);
+        if (!mounted) return;
+        setIsPremium(Boolean(profile?.is_premium));
 
         if (latestPlan) {
           const allItems = await getPlanItems(latestPlan.id);
@@ -157,6 +163,10 @@ export default function PlanPage() {
     setExporting(true);
     void track("pdf_export_clicked");
     try {
+      if (FEATURES.HARD_PAYWALL && !isPremium) {
+        toast.error("Réservé aux comptes Premium.");
+        return;
+      }
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) {
@@ -281,7 +291,12 @@ export default function PlanPage() {
             </Badge>
           )}
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={handleExportPdf} disabled={exporting}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportPdf}
+              disabled={exporting || (FEATURES.HARD_PAYWALL && !isPremium)}
+            >
               {exporting ? "Export..." : "Exporter en PDF"}
             </Button>
             {FEATURES.SOFT_PAYWALL && (
@@ -294,6 +309,20 @@ export default function PlanPage() {
           </div>
         </div>
       </div>
+
+      {FEATURES.HARD_PAYWALL && !isPremium && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Export PDF réservé aux comptes Premium</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <span>Passe en Premium pour exporter et partager ton plan.</span>
+            <Button size="sm" asChild>
+              <Link href="/upgrade">Upgrade</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4">
         {displayItems.map((item) => {

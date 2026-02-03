@@ -13,11 +13,11 @@ export default function MarketingPage() {
           <div className="space-y-6">
             <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">Finance proactive</p>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-              {appName} récupère l'argent perdu dans vos dépenses quotidiennes.
+              {appName} récupère l&apos;argent perdu dans vos dépenses quotidiennes.
             </h1>
             <p className="text-lg text-muted-foreground">
               Une IA analyse vos flux financiers ligne par ligne pour révéler les économies cachées et construire
-              un plan d'action priorisé.
+              un plan d&apos;action priorisé.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Button asChild size="lg">

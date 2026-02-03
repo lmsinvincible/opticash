@@ -180,6 +180,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Upload not found" }, { status: 404 });
   }
 
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("is_premium")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const isPremium = Boolean(profile?.is_premium);
+  if (!isPremium) {
+    const { count } = await supabaseAdmin
+      .from("scans")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if ((count ?? 0) >= 1) {
+      return NextResponse.json({ error: "Free scan limit reached" }, { status: 402 });
+    }
+  }
+
   const { data: fileData, error: downloadError } = await supabaseAdmin.storage
     .from("uploads")
     .download(uploadRow.storage_path);

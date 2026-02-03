@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
@@ -18,17 +18,18 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event;
 
   try {
+    const stripe = getStripe();
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
-  } catch (err) {
+  } catch {
     return new Response("Webhook signature verification failed", { status: 400 });
   }
 
   const handleSubscriptionUpdate = async (subscription: Stripe.Subscription) => {
     const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     const isActive = subscription.status === "active" || subscription.status === "trialing";
-    const premiumUntil = subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000).toISOString()
-      : null;
+    const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number })
+      .current_period_end;
+    const premiumUntil = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
 
     await supabaseAdmin
       .from("profiles")
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.subscription) {
+          const stripe = getStripe();
           const subscription = await stripe.subscriptions.retrieve(
             session.subscription as string
           );
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
       default:
         break;
     }
-  } catch (err) {
+  } catch {
     return new Response("Webhook handler failed", { status: 500 });
   }
 

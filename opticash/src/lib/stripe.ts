@@ -1,11 +1,13 @@
 import Stripe from "stripe";
 
-const secretKey = process.env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
 
-if (!secretKey) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
-}
-
-export const stripe = new Stripe(secretKey, {
-  apiVersion: "2024-06-20",
-});
+export const getStripe = () => {
+  if (stripeClient) return stripeClient;
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  stripeClient = new Stripe(secretKey);
+  return stripeClient;
+};
