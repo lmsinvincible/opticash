@@ -1,48 +1,48 @@
-\"use client\";
+"use client";
 
-import { useState, useEffect } from \"react\";
-import { Button } from \"@/components/ui/button\";
-import { Card, CardContent, CardHeader, CardTitle } from \"@/components/ui/card\";
-import { MarketingHeader } from \"@/components/layout/marketing-header\";
-import { track } from \"@/lib/events\";
-import { supabase } from \"@/lib/supabase/client\";
-import { toast } from \"sonner\";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MarketingHeader } from "@/components/layout/marketing-header";
+import { track } from "@/lib/events";
+import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export default function UpgradePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    void track(\"upgrade_viewed\");
+    void track("upgrade_viewed");
   }, []);
 
-  const handleCheckout = async (interval: \"monthly\" | \"yearly\") => {
+  const handleCheckout = async (interval: "monthly" | "yearly") => {
     setLoading(true);
     try {
-      void track(\"upgrade_checkout_started\", { interval });
+      void track("upgrade_checkout_started", { interval });
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) {
-        toast.error(\"Session invalide. Merci de vous reconnecter.\");
+        toast.error("Session invalide. Merci de vous reconnecter.");
         return;
       }
-      const response = await fetch(\"/api/stripe/checkout\", {
-        method: \"POST\",
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          \"Content-Type\": \"application/json\",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ interval }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error ?? \"Échec Stripe.\");
+        throw new Error(payload.error ?? "Échec Stripe.");
       }
       const payload = await response.json();
       if (payload.url) {
         window.location.href = payload.url;
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : \"Erreur inconnue\";
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -89,10 +89,10 @@ export default function UpgradePage() {
             <CardTitle>Rejoindre la liste Premium</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => handleCheckout(\"monthly\")} disabled={loading}>
-              {loading ? \"Redirection...\" : \"Passer Premium (Mensuel)\"}
+            <Button onClick={() => handleCheckout("monthly")} disabled={loading}>
+              {loading ? "Redirection..." : "Passer Premium (Mensuel)"}
             </Button>
-            <Button variant="outline" onClick={() => handleCheckout(\"yearly\")} disabled={loading}>
+            <Button variant="outline" onClick={() => handleCheckout("yearly")} disabled={loading}>
               Annuel
             </Button>
             <Button variant="ghost" asChild>
