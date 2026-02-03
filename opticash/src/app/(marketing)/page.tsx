@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { routes, appName } from "@/lib/config";
-import MarketingClientMarker from "./_client";
 
 export default function MarketingPage() {
   return (
     <div className="min-h-screen bg-background">
-      <MarketingClientMarker />
       <MarketingHeader />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-16">
         <section className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
