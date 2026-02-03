@@ -1,0 +1,18 @@
+Last login: Mon Feb  2 23:24:39 on ttys005
+lucasmattei@MacBook-Pro-de-lucas opticash % 
+lucasmattei@MacBook-Pro-de-lucas opticash % NEXT_PUBLIC_SUPABASE_URL=https://kpsiguqqjsevugfgpqnr.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtwc2lndXFxanNldnVnZmdwcW5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNTgxNDcsImV4cCI6MjA4NTYzNDE0N30.gS3HH0zOwibDqtvwwKcxhaLdH94WCbkz3DX680qUMzE
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtwc2lndXFxanNldnVnZmdwcW5yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDA1ODE0NywiZXhwIjoyMDg1NjM0MTQ3fQ.BexTCuOBEiJw3FI_P2Lg71wyAp8gDP7AbGYXXJqULhE
+
+lucasmattei@MacBook-Pro-de-lucas opticash % 
+
+
+
+
+
+
+
+
+
+
+
