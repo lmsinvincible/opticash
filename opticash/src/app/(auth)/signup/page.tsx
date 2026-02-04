@@ -30,7 +30,7 @@ export default function SignupPage() {
       const { user, session } = await signUp(email, password);
       if (session) {
         toast.success("Compte créé");
-        router.push(routes.app.dashboard);
+        router.push("/onboarding");
       } else if (user) {
         setSubmitted(true);
       }

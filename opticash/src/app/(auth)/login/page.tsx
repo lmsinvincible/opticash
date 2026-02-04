@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       await signInWithPassword(email, password);
       toast.success("Connexion réussie");
-      router.push(routes.app.dashboard);
+      router.push("/onboarding");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.error(message);

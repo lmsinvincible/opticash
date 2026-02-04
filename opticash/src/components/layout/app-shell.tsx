@@ -43,6 +43,10 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     router.push(routes.marketing.home);
   };
 
+  if (pathname?.startsWith("/onboarding")) {
+    return <div className="min-h-screen bg-muted/30">{children}</div>;
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-6">
