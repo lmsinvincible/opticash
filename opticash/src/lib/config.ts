@@ -27,5 +27,5 @@ export const pricing = {
 
 export const FEATURES = {
   SOFT_PAYWALL: true,
-  HARD_PAYWALL: false,
+  HARD_PAYWALL: true,
 };
