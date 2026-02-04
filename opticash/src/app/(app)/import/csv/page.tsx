@@ -63,6 +63,20 @@ export default function CsvImportPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    if (columns.length === 0) return;
+    const lower = columns.map((col) => col.toLowerCase());
+    const findCol = (name: string) => {
+      const idx = lower.indexOf(name);
+      return idx >= 0 ? columns[idx] : "";
+    };
+    setMapping((prev) => ({
+      date: prev.date || findCol("date"),
+      label: prev.label || findCol("label"),
+      amount: prev.amount || findCol("amount"),
+    }));
+  }, [columns]);
+
   const handleUpload = async () => {
     if (!file) {
       toast.error("Sélectionne un fichier CSV.");
@@ -158,6 +172,7 @@ export default function CsvImportPage() {
 
       const result = (await response.json()) as ScanResponse;
       setImportResult(result);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       toast.success("Scan CSV terminé");
       localStorage.setItem("opticash:dashboard_refresh", "1");
     } catch (err) {
@@ -323,6 +338,20 @@ export default function CsvImportPage() {
                 {processing ? "Analyse..." : "Continuer"}
               </Button>
             </div>
+            {importResult && (
+              <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <div className="mb-2 font-medium text-foreground">Import réussi ✅ Scan créé.</div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span>{parsedRowsCount} lignes analysées.</span>
+                  <Button size="sm" asChild>
+                    <a href="/plan">Voir mon plan</a>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href="/findings">Voir les fuites</a>
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

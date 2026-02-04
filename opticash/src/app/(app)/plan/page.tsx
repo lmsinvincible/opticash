@@ -38,6 +38,7 @@ type PlanItemRow = {
   finding_id: string | null;
   position: number;
   action_title: string;
+  action_steps?: string[] | null;
   gain_estimated_yearly_cents: string | number;
   effort_minutes: number;
   risk_level: "low" | "medium" | "high";
@@ -50,6 +51,39 @@ const statusLabel: Record<PlanItemRow["status"], string> = {
   done: "Fait",
   skipped: "Ignoré",
 };
+
+const riskLabel: Record<PlanItemRow["risk_level"], string> = {
+  low: "Très faible",
+  medium: "Moyen",
+  high: "Élevé",
+};
+
+const riskScore: Record<PlanItemRow["risk_level"], number> = {
+  low: 20,
+  medium: 12,
+  high: 5,
+};
+
+const effortLabel = (minutes: number) => {
+  if (minutes <= 10) return "Facile";
+  if (minutes <= 25) return "Moyen";
+  return "Élevé";
+};
+
+const calculateScore = (gainCents: number, effortMinutes: number, risk: PlanItemRow["risk_level"]) => {
+  const gainEuros = gainCents / 100;
+  const gainScore = Math.min(gainEuros / 50, 50);
+  const effortScore = Math.max(0, 30 - effortMinutes / 2);
+  const riskPoints = riskScore[risk] ?? 5;
+  return Math.round(gainScore + effortScore + riskPoints);
+};
+
+const defaultSteps = (title: string) => [
+  "Vérifie les transactions concernées.",
+  `Connecte-toi au service lié à “${title}”.`,
+  "Applique l’action recommandée.",
+  "Confirme la modification.",
+];
 
 export default function PlanPage() {
   const [loading, setLoading] = useState(true);
@@ -119,6 +153,12 @@ export default function PlanPage() {
         finding_id: null,
         position: index + 1,
         action_title: item.title,
+        action_steps: [
+          "Vérifie les transactions concernées.",
+          "Accède au service ou à la banque.",
+          "Applique l’action recommandée.",
+          "Confirme la modification.",
+        ],
         gain_estimated_yearly_cents: item.yearlyGain,
         effort_minutes: item.effort === "low" ? 10 : item.effort === "medium" ? 25 : 45,
         risk_level: item.risk,
@@ -247,6 +287,20 @@ export default function PlanPage() {
     ? demoItems.reduce((acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0), 0)
     : plan?.total_gain_estimated_yearly_cents ?? totalGain;
 
+  const scoredItems = useMemo(() => {
+    return displayItems
+      .map((item) => {
+        const gain = Number(item.gain_estimated_yearly_cents || 0);
+        const score = calculateScore(gain, item.effort_minutes, item.risk_level);
+        const steps =
+          Array.isArray(item.action_steps) && item.action_steps.length > 0
+            ? item.action_steps
+            : defaultSteps(item.action_title);
+        return { ...item, score, steps };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [displayItems]);
+
   if (!hasData && !showDemo) {
     return (
       <Card>
@@ -325,15 +379,18 @@ export default function PlanPage() {
       )}
 
       <div className="grid gap-4">
-        {displayItems.map((item) => {
+        {scoredItems.map((item, index) => {
           const isPending = pendingIds.has(item.id);
           return (
             <Card key={item.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>#{item.position}</span>
+                    <span>#{index + 1}</span>
                     <Badge variant="secondary">{statusLabel[item.status]}</Badge>
+                    <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                      {item.score}/100
+                    </Badge>
                   </div>
                   <CardTitle className="mt-2 text-base">{item.action_title}</CardTitle>
                 </div>
@@ -341,49 +398,58 @@ export default function PlanPage() {
                   <p className="text-base font-semibold text-foreground">
                     {formatCents(item.gain_estimated_yearly_cents)}/an
                   </p>
-                  <p>{item.effort_minutes} min</p>
+                  <p>
+                    {item.effort_minutes} min · {effortLabel(item.effort_minutes)}
+                  </p>
                   <Badge variant="outline" className="mt-2">
-                    Risque: {item.risk_level}
+                    Risque: {riskLabel[item.risk_level]}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleStatusChange(item.id, "done")}
-                  >
-                    Marquer comme fait
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isPending}
-                    onClick={() => handleStatusChange(item.id, "doing")}
-                  >
-                    En cours
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={isPending}
-                    onClick={() => handleStatusChange(item.id, "skipped")}
-                  >
-                    Ignorer
-                  </Button>
+              <CardContent className="space-y-4">
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                  {item.steps.map((step) => (
+                    <li key={`${item.id}-${step}`}>{step}</li>
+                  ))}
+                </ol>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => handleStatusChange(item.id, "done")}
+                    >
+                      Marquer comme fait
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending}
+                      onClick={() => handleStatusChange(item.id, "doing")}
+                    >
+                      En cours
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isPending}
+                      onClick={() => handleStatusChange(item.id, "skipped")}
+                    >
+                      Ignorer
+                    </Button>
+                  </div>
+                  {item.finding_id ? (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`${routes.app.findings}?finding=${item.finding_id}`}>
+                        Voir détails
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" disabled>
+                      Détails indisponibles
+                    </Button>
+                  )}
                 </div>
-                {item.finding_id ? (
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`${routes.app.findings}?finding=${item.finding_id}`}>
-                      Voir détails
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" disabled>
-                    Détails indisponibles
-                  </Button>
-                )}
               </CardContent>
             </Card>
           );
