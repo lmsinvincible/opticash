@@ -177,15 +177,25 @@ export default function PlanPage() {
     [items]
   );
 
+  const realizedGain = useMemo(() => {
+    return items
+      .filter((item) => item.status === "done")
+      .reduce((acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0), 0);
+  }, [items]);
+
   const handleStatusChange = async (itemId: string, status: PlanItemRow["status"]) => {
     setPendingIds((prev) => new Set(prev).add(itemId));
     const previous = items;
+    const currentItem = items.find((item) => item.id === itemId);
     setItems((current) =>
       current.map((item) => (item.id === itemId ? { ...item, status } : item))
     );
     try {
       await updatePlanItemStatus(itemId, status);
       localStorage.setItem("opticash:dashboard_refresh", "1");
+      if (status === "done" && currentItem) {
+        toast.success(`Action marquée comme faite • +${formatCents(currentItem.gain_estimated_yearly_cents)} / an`);
+      }
     } catch (err) {
       setItems(previous);
       const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -363,6 +373,20 @@ export default function PlanPage() {
           </div>
         </div>
       </div>
+
+      <Card className="border-emerald-200 bg-emerald-50/40">
+        <CardHeader>
+          <CardTitle>Économies réalisées</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <div className="text-3xl font-semibold text-emerald-700">
+            +{formatCents(realizedGain)}
+          </div>
+          <p className="mt-1 text-sm text-emerald-700/80">
+            Cette année grâce à tes actions terminées.
+          </p>
+        </CardContent>
+      </Card>
 
       {FEATURES.HARD_PAYWALL && !isPremium && (
         <Card className="border-dashed">
