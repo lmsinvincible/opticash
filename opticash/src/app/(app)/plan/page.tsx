@@ -203,6 +203,8 @@ export default function PlanPage() {
         risk_level: item.risk,
         status: "todo" as const,
         category: "general",
+        proof: null,
+        reasoning: [],
         has_usage_questions: false,
         usage_context: {},
         usage_answers: {},
