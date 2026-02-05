@@ -27,6 +27,7 @@ export default function ExpensesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [analyzedCount, setAnalyzedCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -85,8 +86,9 @@ export default function ExpensesPage() {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload.error ?? "Impossible de charger les dépenses.");
         }
-        const payload = (await response.json()) as { items: ExpenseRow[] };
+        const payload = (await response.json()) as { items: ExpenseRow[]; count?: number };
         setItems(payload.items ?? []);
+        setAnalyzedCount(payload.count ?? (payload.items?.length ?? 0));
         writeExpensesCache(payload.items ?? []);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -147,7 +149,7 @@ export default function ExpensesPage() {
         <div>
           <h2 className="text-2xl font-semibold">Dépenses détaillées</h2>
           <p className="text-sm text-muted-foreground">
-            500 lignes max · {opportunities} opportunités détectées
+            {analyzedCount} lignes analysées · 500 lignes max · {opportunities} opportunités détectées
           </p>
         </div>
         <Button variant="outline" asChild>
