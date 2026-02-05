@@ -23,7 +23,7 @@ type AiDetail = {
   opportunite: string;
 };
 
-const MAX_LINES = 100;
+const MAX_LINES = 500;
 const BATCH_SIZE = 20;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 

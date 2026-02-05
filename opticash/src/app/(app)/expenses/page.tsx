@@ -144,7 +144,7 @@ export default function ExpensesPage() {
         <div>
           <h2 className="text-2xl font-semibold">Dépenses détaillées</h2>
           <p className="text-sm text-muted-foreground">
-            100 lignes max · {opportunities} opportunités détectées
+            500 lignes max · {opportunities} opportunités détectées
           </p>
         </div>
         <Button variant="outline" asChild>
