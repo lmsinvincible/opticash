@@ -83,7 +83,14 @@ const analyzeBatch = async (lines: ExpenseLine[]): Promise<AiDetail[]> => {
         },
         {
           role: "user",
-          content: `Pour chaque ligne ci-dessous, donne catégorie détaillée, lieu inféré, type de dépense, opportunité d'économie.\nRéponds en JSON : { "items": [ { "line": 1, "categorie": "...", "lieu": "...", "type": "...", "opportunite": "..." } ] }\n\n${promptLines}`,
+          content: `Pour chaque ligne ci-dessous, donne catégorie détaillée, lieu inféré, type de dépense, opportunité d'économie.
+
+Utilise UNIQUEMENT une catégorie parmi :
+Frais bancaires, Abonnements, Alimentaire, Électronique, Transport, Logement, Assurances, Télécom, Santé, Loisirs, Autre.
+
+Réponds en JSON : { "items": [ { "line": 1, "categorie": "...", "lieu": "...", "type": "...", "opportunite": "..." } ] }
+
+${promptLines}`,
         },
       ],
     }),

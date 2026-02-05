@@ -8,23 +8,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCents } from "@/lib/money";
 import { deslugify, groupByMerchant, readExpensesCache } from "@/lib/expenses";
 
+const subscriptionMatchers = [
+  /netflix/i,
+  /spotify/i,
+  /deezer/i,
+  /apple music/i,
+  /amazon prime/i,
+  /canva/i,
+  /linkedin/i,
+];
+
 export default function ExpenseCategoryPage() {
   const params = useParams();
   const slug = Array.isArray(params.category) ? params.category[0] : params.category;
   const categoryName = deslugify(slug ?? "");
 
   const items = readExpensesCache() ?? [];
-  const filtered = useMemo(
-    () => items.filter((item) => (item.categorie || "Non classé") === categoryName),
-    [items, categoryName]
-  );
+  const filtered = useMemo(() => {
+    if (slug === "frais-bancaires") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("frais bancaires") ||
+          /frais|cotisation|tenue|commission|agios|package|carte|incident/i.test(item.label)
+      );
+    }
+    if (slug === "abonnements") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("abonnements") ||
+          subscriptionMatchers.some((rx) => rx.test(item.label))
+      );
+    }
+    return items.filter((item) => (item.categorie || "Non classé") === categoryName);
+  }, [items, categoryName, slug]);
   const merchants = useMemo(() => groupByMerchant(filtered), [filtered]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">{categoryName}</h2>
+          <h2 className="text-2xl font-semibold">
+            {slug === "frais-bancaires"
+              ? "Frais bancaires"
+              : slug === "abonnements"
+                ? "Abonnements"
+                : categoryName}
+          </h2>
           <p className="text-sm text-muted-foreground">{filtered.length} lignes</p>
         </div>
         <Button variant="outline" asChild>

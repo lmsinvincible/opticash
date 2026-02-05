@@ -562,6 +562,7 @@ export async function POST(request: NextRequest) {
           currency: "EUR",
         }
       : {},
+    category: finding.category === "bank_fees" ? "frais-bancaires" : "abonnements",
     status: "todo",
   }));
 

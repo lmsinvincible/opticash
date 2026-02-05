@@ -718,8 +718,8 @@ export default function PlanPage() {
                     </div>
                   </div>
                 )}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
                     {item.status === "done" || item.status === "skipped" ? (
                       <Button
                         size="sm"
@@ -758,11 +758,23 @@ export default function PlanPage() {
                     )}
                   </div>
                   {item.finding_id ? (
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={`${routes.app.findings}?finding=${item.finding_id}`}>
-                        Voir détails
-                      </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`${routes.app.findings}?finding=${item.finding_id}`}>
+                          Voir détails
+                        </Link>
+                      </Button>
+                      {item.category === "frais-bancaires" && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href="/expenses/category/frais-bancaires">Détails frais bancaires</Link>
+                        </Button>
+                      )}
+                      {item.category === "abonnements" && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href="/expenses/category/abonnements">Détails abonnements</Link>
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <Button size="sm" variant="outline" disabled>
                       Détails indisponibles
