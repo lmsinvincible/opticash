@@ -27,7 +27,8 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const { user, session } = await signUp(email, password);
+      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
+      const { user, session } = await signUp(email, password, redirectTo);
       if (session) {
         toast.success("Compte créé");
         router.push("/onboarding");

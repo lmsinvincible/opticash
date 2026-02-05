@@ -17,8 +17,12 @@ export const signInWithPassword = async (email: string, password: string) => {
   return data;
 };
 
-export const signUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+export const signUp = async (email: string, password: string, redirectTo?: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+  });
   if (error) {
     throw error;
   }
@@ -33,8 +37,10 @@ export const signInWithOAuth = async (provider: Provider) => {
   return data;
 };
 
-export const resetPassword = async (email: string) => {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+export const resetPassword = async (email: string, redirectTo?: string) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
   if (error) {
     throw error;
   }
