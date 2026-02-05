@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
 import { formatCents } from "@/lib/money";
 import { routes } from "@/lib/config";
+import { groupByCategory, writeExpensesCache } from "@/lib/expenses";
 import { toast } from "sonner";
 
 type ExpenseRow = {
@@ -86,6 +87,7 @@ export default function ExpensesPage() {
         }
         const payload = (await response.json()) as { items: ExpenseRow[] };
         setItems(payload.items ?? []);
+        writeExpensesCache(payload.items ?? []);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Erreur inconnue";
         setError(message);
@@ -101,6 +103,7 @@ export default function ExpensesPage() {
     () => items.filter((item) => item.opportunite && item.opportunite !== "—").length,
     [items]
   );
+  const categories = useMemo(() => groupByCategory(items), [items]);
 
   if (loading) {
     return (
@@ -151,6 +154,32 @@ export default function ExpensesPage() {
           <Link href={routes.app.plan}>Retour au plan</Link>
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Catégories détectées</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          {categories.map((category) => (
+            <Link
+              key={category.slug}
+              href={`/expenses/category/${category.slug}`}
+              className="rounded-lg border px-4 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{category.category}</span>
+                <span className="text-muted-foreground">{category.count} lignes</span>
+              </div>
+              <div className="mt-2 text-sm text-emerald-700">
+                Total: {formatCents(Math.round(category.total * 100))}
+              </div>
+            </Link>
+          ))}
+          {categories.length === 0 && (
+            <div className="text-sm text-muted-foreground">Aucune catégorie disponible.</div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
