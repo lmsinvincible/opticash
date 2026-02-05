@@ -703,6 +703,17 @@ export default function PlanPage() {
             </Button>
           )}
         </div>
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="space-y-2 py-4 text-sm text-emerald-900/90">
+            <p className="font-medium">
+              Ton taux PAS est peut-être trop élevé. Tu oublies des dons ou des km ?
+            </p>
+            <p>
+              Récupère 800–2 500 € facilement sur tes impôts 2026.
+              Commence par l’action n°1 (la plus rentable) ↓
+            </p>
+          </CardContent>
+        </Card>
         {taxItems.length === 0 ? (
           <Card className="border-dashed">
             <CardHeader>
@@ -739,9 +750,9 @@ export default function PlanPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                   {item.proof ? (
-                    <p className="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-emerald-800">
+                    <Badge variant="outline" className="w-fit bg-sky-50 text-sky-700">
                       Preuve : {item.proof}
-                    </p>
+                    </Badge>
                   ) : null}
                   {Array.isArray(item.reasoning) && item.reasoning.length > 0 ? (
                     <ul className="list-disc pl-5">

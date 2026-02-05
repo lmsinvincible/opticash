@@ -158,8 +158,13 @@ Dons détectés : ${input.donations} €
 Enfants à charge : ${input.children}
 Autres infos utilisateur : ${notes ?? ""}
 
+Tu dois retourner UNIQUEMENT ces 3 opportunités si elles sont applicables :
+1) Ajuster le taux PAS
+2) Déclarer des dons
+3) Déclarer les frais kilométriques
+Ne propose RIEN d’autre (pas de quotient familial, pas de télétravail, pas de crédits d’impôts).
+
 Pour chaque opportunité impôts :
-Détecte si applicable
 Calcule gain net estimé (barèmes 2026)
 Donne preuve (ex. : ligne CSV ou réponse utilisateur)
 Explique en 3 lignes simples pourquoi c’est une économie
@@ -204,7 +209,10 @@ Réponds UNIQUEMENT en JSON :
         if (content) {
           const parsed = JSON.parse(content) as { impotsActions?: typeof actions };
           if (Array.isArray(parsed.impotsActions) && parsed.impotsActions.length > 0) {
-            actions = parsed.impotsActions;
+            const allowed = ["taux pas", "dons", "frais kilométriques"];
+            actions = parsed.impotsActions.filter((action) =>
+              allowed.some((key) => action.title?.toLowerCase?.().includes(key))
+            );
           }
         }
       }
@@ -212,6 +220,13 @@ Réponds UNIQUEMENT en JSON :
       // fallback
     }
   }
+
+  actions = actions.map((action) => {
+    if (action.title.toLowerCase().includes("pas")) {
+      return { ...action, score: Math.max(action.score ?? 0, 92) };
+    }
+    return action;
+  });
 
   const planItems = actions.map((action, index) => ({
     user_id: userId,
