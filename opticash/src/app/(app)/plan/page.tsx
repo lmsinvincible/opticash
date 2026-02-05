@@ -305,8 +305,12 @@ export default function PlanPage() {
     }
     setUsageSaving(true);
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      let { data } = await supabase.auth.getSession();
+      let token = data.session?.access_token;
+      if (!token) {
+        const refreshed = await supabase.auth.refreshSession();
+        token = refreshed.data.session?.access_token ?? null;
+      }
       if (!token) {
         toast.error("Session invalide. Merci de vous reconnecter.");
         return;
@@ -346,8 +350,12 @@ export default function PlanPage() {
     }
     setTaxSaving(true);
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      let { data } = await supabase.auth.getSession();
+      let token = data.session?.access_token;
+      if (!token) {
+        const refreshed = await supabase.auth.refreshSession();
+        token = refreshed.data.session?.access_token ?? null;
+      }
       if (!token) {
         toast.error("Session invalide. Merci de vous reconnecter.");
         return;
