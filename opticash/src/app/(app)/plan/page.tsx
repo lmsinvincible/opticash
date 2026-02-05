@@ -186,6 +186,14 @@ export default function PlanPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tax") === "1") {
+      setTaxModalOpen(true);
+    }
+  }, []);
+
   const demoItems = useMemo(
     () =>
       demoPlanItems.map((item, index) => ({
@@ -643,29 +651,42 @@ export default function PlanPage() {
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={isPending}
-                      onClick={() => handleStatusChange(item.id, "done")}
-                    >
-                      Marquer comme fait
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => handleStatusChange(item.id, "doing")}
-                    >
-                      En cours
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={isPending}
-                      onClick={() => handleStatusChange(item.id, "skipped")}
-                    >
-                      Ignorer
-                    </Button>
+                    {item.status === "done" || item.status === "skipped" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => handleStatusChange(item.id, "todo")}
+                      >
+                        Annuler
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(item.id, "done")}
+                        >
+                          Marquer comme fait
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(item.id, "doing")}
+                        >
+                          En cours
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(item.id, "skipped")}
+                        >
+                          Ignorer
+                        </Button>
+                      </>
+                    )}
                   </div>
                   {item.finding_id ? (
                     <Button size="sm" variant="outline" asChild>

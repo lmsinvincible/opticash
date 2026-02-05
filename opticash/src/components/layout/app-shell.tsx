@@ -50,7 +50,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-6">
-        <aside className="hidden w-64 flex-col gap-6 rounded-xl border bg-background p-6 lg:flex">
+        <aside className="hidden w-64 flex-col gap-6 rounded-xl border bg-background p-6 lg:flex lg:sticky lg:top-6 lg:self-start">
           <div>
             <p className="text-xs uppercase text-muted-foreground">OptiCash</p>
             <p className="text-lg font-semibold">Vue d&apos;ensemble</p>
@@ -72,8 +72,11 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
             ))}
           </nav>
           <Separator />
-          <Button variant="outline" size="sm">
-            Export PDF (bientôt)
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/import/csv">Refaire plan OptiCash</Link>
+          </Button>
+          <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-600" asChild>
+            <Link href="/plan?tax=1">Refaire analyse impôts</Link>
           </Button>
         </aside>
 
