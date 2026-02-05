@@ -39,6 +39,51 @@ export default function CsvImportPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [scanCount, setScanCount] = useState(0);
 
+  const inferMapping = (cols: string[], rows: string[][]) => {
+    if (!cols.length) return { date: "", label: "", amount: "" };
+    const lower = cols.map((col) => col.toLowerCase());
+    const findByHeader = (candidates: string[]) => {
+      const idx = lower.findIndex((col) => candidates.some((c) => col.includes(c)));
+      return idx >= 0 ? cols[idx] : "";
+    };
+
+    const sampleRows = rows.slice(1, 6);
+    const scoreColumn = (index: number) => {
+      let dateScore = 0;
+      let amountScore = 0;
+      let labelScore = 0;
+      sampleRows.forEach((row) => {
+        const value = (row[index] ?? "").trim();
+        if (!value) return;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(value) || /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          dateScore += 2;
+        }
+        if (/^-?\d+[.,]\d{2}$/.test(value) || /^-?\d+$/.test(value)) {
+          amountScore += 2;
+        }
+        if (/[a-zA-Z]/.test(value)) {
+          labelScore += 1;
+        }
+      });
+      return { dateScore, amountScore, labelScore };
+    };
+
+    const scored = cols.map((_, idx) => ({ idx, ...scoreColumn(idx) }));
+    const bestDate = scored.sort((a, b) => b.dateScore - a.dateScore)[0]?.idx ?? 0;
+    const bestAmount = scored.sort((a, b) => b.amountScore - a.amountScore)[0]?.idx ?? 1;
+    const bestLabel = scored.sort((a, b) => b.labelScore - a.labelScore)[0]?.idx ?? 2;
+
+    const headerDate = findByHeader(["date"]);
+    const headerAmount = findByHeader(["amount", "montant", "debit", "débit", "credit", "crédit", "value"]);
+    const headerLabel = findByHeader(["label", "libellé", "libelle", "description", "merchant"]);
+
+    return {
+      date: headerDate || cols[bestDate] || "",
+      amount: headerAmount || cols[bestAmount] || "",
+      label: headerLabel || cols[bestLabel] || "",
+    };
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -67,17 +112,13 @@ export default function CsvImportPage() {
 
   useEffect(() => {
     if (columns.length === 0) return;
-    const lower = columns.map((col) => col.toLowerCase());
-    const findCol = (name: string) => {
-      const idx = lower.indexOf(name);
-      return idx >= 0 ? columns[idx] : "";
-    };
+    const inferred = inferMapping(columns, preview);
     setMapping((prev) => ({
-      date: prev.date || findCol("date"),
-      label: prev.label || findCol("label"),
-      amount: prev.amount || findCol("amount"),
+      date: prev.date || inferred.date,
+      label: prev.label || inferred.label,
+      amount: prev.amount || inferred.amount,
     }));
-  }, [columns]);
+  }, [columns, preview]);
 
   const handleUpload = async () => {
     if (!file) {
@@ -132,14 +173,27 @@ export default function CsvImportPage() {
       toast.error("Upload introuvable.");
       return;
     }
-    if (!mapping.date || !mapping.label || !mapping.amount) {
-      toast.error("Complète le mapping des colonnes.");
-      return;
+    let finalMapping = { ...mapping };
+    if (!finalMapping.date || !finalMapping.label || !finalMapping.amount) {
+      const inferred = inferMapping(columns, preview);
+      finalMapping = {
+        date: finalMapping.date || inferred.date,
+        label: finalMapping.label || inferred.label,
+        amount: finalMapping.amount || inferred.amount,
+      };
+      setMapping(finalMapping);
     }
-    if (
-      new Set([mapping.date, mapping.label, mapping.amount]).size !== 3
-    ) {
-      toast.error("Chaque champ doit utiliser une colonne différente.");
+    if (new Set([finalMapping.date, finalMapping.label, finalMapping.amount]).size !== 3) {
+      const fallback = [columns[0], columns[1], columns[2]];
+      finalMapping = {
+        date: finalMapping.date || fallback[0] || "",
+        label: finalMapping.label || fallback[1] || "",
+        amount: finalMapping.amount || fallback[2] || "",
+      };
+      setMapping(finalMapping);
+    }
+    if (!finalMapping.date || !finalMapping.label || !finalMapping.amount) {
+      toast.error("Impossible de détecter automatiquement les colonnes. Choisis-les manuellement.");
       return;
     }
     if (FEATURES.HARD_PAYWALL && !isPremium && !isAdmin && scanCount >= 1) {
@@ -162,7 +216,7 @@ export default function CsvImportPage() {
         },
         body: JSON.stringify({
           upload_id: uploadId,
-          mapping,
+          mapping: finalMapping,
           options: { currency: "EUR" },
         }),
       });
@@ -267,28 +321,46 @@ export default function CsvImportPage() {
       {columns.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Mapping des colonnes</CardTitle>
+            <CardTitle>Mapping des colonnes (auto-détecté)</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            {["date", "label", "amount"].map((field) => (
-              <div key={field} className="space-y-2">
-                <Label>{field}</Label>
-                <select
-                  className="w-full rounded-md border px-3 py-2 text-sm"
-                  value={mapping[field as keyof typeof mapping]}
-                  onChange={(event) =>
-                    setMapping((prev) => ({ ...prev, [field]: event.target.value }))
-                  }
-                >
-                  <option value="">Sélectionner</option>
-                  {columns.map((col) => (
-                    <option key={`${field}-${col}`} value={col}>
-                      {col}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              OptiCash détecte automatiquement les colonnes. Tu peux ajuster si besoin.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {["date", "label", "amount"].map((field) => (
+                <div key={field} className="space-y-2">
+                  <Label>{field}</Label>
+                  <select
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    value={mapping[field as keyof typeof mapping]}
+                    onChange={(event) =>
+                      setMapping((prev) => ({ ...prev, [field]: event.target.value }))
+                    }
+                  >
+                    <option value="">Sélectionner</option>
+                    {columns.map((col) => (
+                      <option key={`${field}-${col}`} value={col}>
+                        {col}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const inferred = inferMapping(columns, preview);
+                  setMapping(inferred);
+                  toast.success("Colonnes détectées automatiquement.");
+                }}
+              >
+                Auto-détecter
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -327,16 +399,7 @@ export default function CsvImportPage() {
               </table>
             </div>
             <div className="mt-4 flex justify-end">
-              <Button
-                onClick={handleContinue}
-                disabled={
-                  processing ||
-                  !mapping.date ||
-                  !mapping.label ||
-                  !mapping.amount ||
-                  new Set([mapping.date, mapping.label, mapping.amount]).size !== 3
-                }
-              >
+              <Button onClick={handleContinue} disabled={processing}>
                 {processing ? "Analyse..." : "Continuer"}
               </Button>
             </div>
