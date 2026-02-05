@@ -693,15 +693,13 @@ export default function PlanPage() {
               Économies supplémentaires possibles sur tes impôts.
             </p>
           </div>
-          {!taxItems.length && (
-            <Button
-              size="sm"
-              className="bg-emerald-600 text-white hover:bg-emerald-600"
-              onClick={() => setTaxModalOpen(true)}
-            >
-              Lancer l’analyse impôts
-            </Button>
-          )}
+          <Button
+            size="sm"
+            className="bg-emerald-600 text-white hover:bg-emerald-600"
+            onClick={() => setTaxModalOpen(true)}
+          >
+            {taxItems.length > 0 ? "Refaire l’analyse impôts" : "Lancer l’analyse impôts"}
+          </Button>
         </div>
         <Card className="border-emerald-200 bg-emerald-50/50">
           <CardContent className="space-y-2 py-4 text-sm text-emerald-900/90">

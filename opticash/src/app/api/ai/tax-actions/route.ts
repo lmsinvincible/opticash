@@ -228,6 +228,9 @@ Réponds UNIQUEMENT en JSON :
     return action;
   });
 
+  // Replace previous tax items for this plan
+  await supabaseAdmin.from("plan_items").delete().eq("plan_id", plan.id).eq("category", "tax");
+
   const planItems = actions.map((action, index) => ({
     user_id: userId,
     plan_id: plan.id,
