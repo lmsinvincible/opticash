@@ -422,6 +422,8 @@ export async function POST(request: NextRequest) {
       finished_at: now,
       summary: {
         source: "csv",
+        upload_id,
+        mapping,
         total_gain_estimated_yearly_cents: totalGain,
         tax_context: {
           donations_detected_eur: Math.round((donationsCents / 100) * 100) / 100,

@@ -593,6 +593,15 @@ export default function PlanPage() {
             >
               {exporting ? "Export..." : "Exporter en PDF"}
             </Button>
+            {isPremium || isAdmin ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/expenses">Voir détail ligne par ligne</Link>
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/upgrade">Détail Premium</Link>
+              </Button>
+            )}
             {FEATURES.SOFT_PAYWALL && (
               <Button size="sm" variant="ghost" asChild>
                 <Link href="/upgrade" onClick={() => track("upgrade_clicked", { from: "plan" })}>
