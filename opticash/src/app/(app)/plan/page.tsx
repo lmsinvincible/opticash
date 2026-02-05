@@ -463,7 +463,7 @@ export default function PlanPage() {
       setOcrProgress(100);
       setOcrOverlay("done");
       setTimeout(() => setOcrOverlay("idle"), 1000);
-    } catch (err) {
+    } catch {
       toast.error("Échec OCR. Essaie un autre fichier.");
       setOcrOverlay("idle");
     } finally {
