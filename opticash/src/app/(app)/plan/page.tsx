@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,6 +108,7 @@ const defaultSteps = (title: string) => [
 ];
 
 export default function PlanPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -312,7 +314,9 @@ export default function PlanPage() {
         token = refreshed.data.session?.access_token ?? null;
       }
       if (!token) {
-        toast.error("Session invalide. Merci de vous reconnecter.");
+        toast.error("Session expirée. Merci de vous reconnecter.");
+        await supabase.auth.signOut();
+        router.push("/login");
         return;
       }
       const response = await fetch("/api/ai/subscription-alternatives", {
@@ -323,6 +327,12 @@ export default function PlanPage() {
         },
         body: JSON.stringify({ plan_item_id: itemId, answers: usageAnswers }),
       });
+      if (response.status === 401) {
+        toast.error("Session expirée. Merci de vous reconnecter.");
+        await supabase.auth.signOut();
+        router.push("/login");
+        return;
+      }
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error ?? "Impossible d'affiner l'abonnement.");
@@ -357,7 +367,9 @@ export default function PlanPage() {
         token = refreshed.data.session?.access_token ?? null;
       }
       if (!token) {
-        toast.error("Session invalide. Merci de vous reconnecter.");
+        toast.error("Session expirée. Merci de vous reconnecter.");
+        await supabase.auth.signOut();
+        router.push("/login");
         return;
       }
       const response = await fetch("/api/ai/tax-actions", {
@@ -374,6 +386,12 @@ export default function PlanPage() {
           notes: taxAnswers.notes,
         }),
       });
+      if (response.status === 401) {
+        toast.error("Session expirée. Merci de vous reconnecter.");
+        await supabase.auth.signOut();
+        router.push("/login");
+        return;
+      }
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error ?? "Impossible de générer les actions impôts.");
