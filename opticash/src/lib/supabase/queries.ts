@@ -84,7 +84,7 @@ export const getLatestScan = async (userId: string) => {
 export const getProfile = async (userId: string) => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, is_premium")
+    .select("id, is_premium, is_admin")
     .eq("id", userId)
     .maybeSingle();
 

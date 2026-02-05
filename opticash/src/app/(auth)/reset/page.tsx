@@ -40,7 +40,11 @@ export default function ResetPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      await resetPassword(email, "https://opticash-six.vercel.app/reset");
+      const baseUrl =
+        typeof window !== "undefined"
+          ? process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+          : "https://opticash-six.vercel.app";
+      await resetPassword(email, `${baseUrl}/reset`);
       toast.success("Email envoyé si le compte existe.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";

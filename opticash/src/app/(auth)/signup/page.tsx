@@ -27,7 +27,11 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
+      const baseUrl =
+        typeof window !== "undefined"
+          ? process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+          : undefined;
+      const redirectTo = baseUrl ? `${baseUrl}/login` : undefined;
       const { user, session } = await signUp(email, password, redirectTo);
       if (session) {
         toast.success("Compte créé");

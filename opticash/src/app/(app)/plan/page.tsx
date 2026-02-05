@@ -141,6 +141,7 @@ export default function PlanPage() {
   const [ocrText, setOcrText] = useState("");
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrOverlay, setOcrOverlay] = useState<"idle" | "running" | "done">("idle");
 
   useEffect(() => {
     let mounted = true;
@@ -419,6 +420,9 @@ export default function PlanPage() {
         setItems((current) => [...current, ...payload.items]);
       }
       toast.success("Impôts Boost généré");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("opticash:tax_boosted", "1");
+      }
       setTaxModalOpen(false);
       setOcrText("");
       setTaxFile(null);
@@ -438,6 +442,7 @@ export default function PlanPage() {
     }
     setOcrLoading(true);
     setOcrProgress(0);
+    setOcrOverlay("running");
     try {
       const { default: Tesseract } = await import("tesseract.js");
       const { data } = await Tesseract.recognize(taxFile, "fra", {
@@ -455,8 +460,12 @@ export default function PlanPage() {
       setOcrText(text);
       toast.success("Texte extrait. Tu peux lancer l’analyse.");
       setTaxMode("upload");
+      setOcrProgress(100);
+      setOcrOverlay("done");
+      setTimeout(() => setOcrOverlay("idle"), 1000);
     } catch (err) {
       toast.error("Échec OCR. Essaie un autre fichier.");
+      setOcrOverlay("idle");
     } finally {
       setOcrLoading(false);
     }
@@ -485,6 +494,13 @@ export default function PlanPage() {
 
   const taxItems = scoredItems.filter((item) => item.category === "tax");
   const coreItems = scoredItems.filter((item) => item.category !== "tax");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (taxItems.length > 0) {
+      localStorage.setItem("opticash:tax_boosted", "1");
+    }
+  }, [taxItems.length]);
 
   if (loading) {
     return (
@@ -1036,6 +1052,30 @@ export default function PlanPage() {
               >
                 {taxSaving ? "Analyse..." : "Valider mes réponses"}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ocrOverlay !== "idle" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 text-center shadow-lg">
+            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+            <h3 className="text-lg font-semibold">
+              {ocrOverlay === "done"
+                ? "Analyse terminée !"
+                : "Analyse de ton avis d’impôt en cours… (5–15 secondes)"}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Traitement local sur ton appareil – tes données sont supprimées juste après. RGPD
+              compliant.
+            </p>
+            <div className="mt-4">
+              <progress
+                className="h-2 w-full overflow-hidden rounded-full"
+                value={ocrProgress}
+                max={100}
+              />
             </div>
           </div>
         </div>

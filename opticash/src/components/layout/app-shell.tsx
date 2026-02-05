@@ -19,6 +19,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
+  const [taxBoosted, setTaxBoosted] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -38,6 +39,18 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const readFlag = () => {
+      setTaxBoosted(localStorage.getItem("opticash:tax_boosted") === "1");
+    };
+    readFlag();
+    window.addEventListener("storage", readFlag);
+    return () => {
+      window.removeEventListener("storage", readFlag);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await signOut();
     router.push(routes.marketing.home);
@@ -52,8 +65,10 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-6">
         <aside className="hidden w-64 flex-col gap-6 rounded-xl border bg-background p-6 lg:flex lg:sticky lg:top-6 lg:self-start">
           <div>
-            <p className="text-xs uppercase text-muted-foreground">OptiCash</p>
-            <p className="text-lg font-semibold">Vue d&apos;ensemble</p>
+            <Link href={routes.marketing.home} className="inline-flex flex-col">
+              <span className="text-xs uppercase text-muted-foreground">OptiCash</span>
+              <span className="text-lg font-semibold">Vue d&apos;ensemble</span>
+            </Link>
           </div>
           <Separator />
           <nav className="flex flex-col gap-2">
@@ -76,15 +91,17 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
             <Link href="/import/csv">Refaire plan OptiCash</Link>
           </Button>
           <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-600" asChild>
-            <Link href="/plan?tax=1">Refaire analyse impôts</Link>
+            <Link href="/plan?tax=1">{taxBoosted ? "Refaire boost impôts" : "Lancer Impôts Boost"}</Link>
           </Button>
         </aside>
 
         <main className="flex-1">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-background px-6 py-4">
             <div>
-              <p className="text-xs uppercase text-muted-foreground">OptiCash</p>
-              <h1 className="text-xl font-semibold">Pilotage des économies</h1>
+              <Link href={routes.marketing.home} className="inline-flex flex-col">
+                <span className="text-xs uppercase text-muted-foreground">OptiCash</span>
+                <span className="text-xl font-semibold">Pilotage des économies</span>
+              </Link>
             </div>
             <div className="flex items-center gap-3">
               {email ? (

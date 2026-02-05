@@ -36,6 +36,7 @@ export default function CsvImportPage() {
   });
   const [parsedRowsCount, setParsedRowsCount] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [scanCount, setScanCount] = useState(0);
 
   useEffect(() => {
@@ -46,10 +47,11 @@ export default function CsvImportPage() {
         if (!userId) return;
         const { data: profile } = await supabase
           .from("profiles")
-          .select("is_premium")
+          .select("is_premium, is_admin")
           .eq("id", userId)
           .maybeSingle();
         setIsPremium(Boolean(profile?.is_premium));
+        setIsAdmin(Boolean(profile?.is_admin));
 
         const { count } = await supabase
           .from("scans")
@@ -140,7 +142,7 @@ export default function CsvImportPage() {
       toast.error("Chaque champ doit utiliser une colonne différente.");
       return;
     }
-    if (FEATURES.HARD_PAYWALL && !isPremium && scanCount >= 1) {
+    if (FEATURES.HARD_PAYWALL && !isPremium && !isAdmin && scanCount >= 1) {
       toast.error("Limite gratuite atteinte. Passe en Premium.");
       return;
     }
@@ -221,7 +223,7 @@ export default function CsvImportPage() {
         </Card>
       )}
 
-      {FEATURES.HARD_PAYWALL && !isPremium && scanCount >= 1 && (
+      {FEATURES.HARD_PAYWALL && !isPremium && !isAdmin && scanCount >= 1 && (
         <Card className="border-dashed">
           <CardHeader>
             <CardTitle>Limite gratuite atteinte</CardTitle>

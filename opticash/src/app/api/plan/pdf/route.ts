@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabaseAdmin
     .from("profiles")
-    .select("is_premium")
+    .select("is_premium, is_admin")
     .eq("id", userId)
     .maybeSingle();
 
-  if (!profile?.is_premium) {
+  if (!profile?.is_premium && !profile?.is_admin) {
     return new Response(JSON.stringify({ error: "Premium required" }), { status: 402 });
   }
 

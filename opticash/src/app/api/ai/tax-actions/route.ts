@@ -101,12 +101,13 @@ export async function POST(request: NextRequest) {
   const userId = userData.user.id;
 
   const payload = await request.json();
-  const { salary, km, children, donations, notes } = payload as {
+  const { salary, km, children, donations, notes, ocrText } = payload as {
     salary: number;
     km: number;
     children: number;
     donations: number;
     notes?: string;
+    ocrText?: string;
   };
 
   const { data: scan } = await supabaseAdmin
@@ -150,6 +151,7 @@ export async function POST(request: NextRequest) {
   let actions = buildDefaultActions(input);
 
   if (OPENAI_API_KEY) {
+    const trimmedOcr = typeof ocrText === "string" ? ocrText.slice(0, 6000) : "";
     const prompt = `Tu es un expert fiscal français 2026 ultra-pratique et rassurant.
 Données :
 Salaire mensuel moyen : ${input.salaryMonthly} €
@@ -157,6 +159,8 @@ Km domicile-travail déclarés : ${input.kmAnnual} km/an
 Dons détectés : ${input.donations} €
 Enfants à charge : ${input.children}
 Autres infos utilisateur : ${notes ?? ""}
+Texte extrait de l'avis d'impôt (si fourni) :
+${trimmedOcr}
 
 Tu dois retourner UNIQUEMENT ces 3 opportunités si elles sont applicables :
 1) Ajuster le taux PAS
@@ -269,6 +273,7 @@ Réponds UNIQUEMENT en JSON :
         children: input.children,
         donations: input.donations,
         notes: notes ?? "",
+        ocr: Boolean(ocrText),
       },
       tax_generated: true,
     })
