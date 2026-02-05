@@ -407,7 +407,28 @@ export async function POST(request: NextRequest) {
     .slice(0, MAX_FINDINGS);
 
   if (findings.length === 0) {
-    return NextResponse.json({ error: "No findings detected" }, { status: 400 });
+    const fallbackSubs: FindingSeed[] = [];
+    const fallbackFees: FindingSeed[] = [];
+    grouped.forEach((entries, key) => {
+      if (entries.length < 2) return;
+      const amounts = entries.map((entry) => Math.abs(entry.amountCents));
+      if (!stableAmount(amounts)) return;
+      if (keywordRegex.test(key)) {
+        fallbackFees.push(buildBankFeeFinding(key, entries));
+        return;
+      }
+      const match = SUBSCRIPTION_MATCHERS.find((item) => item.match.test(key));
+      if (match) {
+        fallbackSubs.push(buildSubscriptionFinding(match.name, entries));
+      }
+    });
+    const fallback = [...fallbackSubs, ...fallbackFees]
+      .sort((a, b) => b.gainCents - a.gainCents)
+      .slice(0, MAX_FINDINGS);
+    if (fallback.length === 0) {
+      return NextResponse.json({ error: "No findings detected" }, { status: 400 });
+    }
+    findings.splice(0, findings.length, ...fallback);
   }
 
   const now = new Date().toISOString();
