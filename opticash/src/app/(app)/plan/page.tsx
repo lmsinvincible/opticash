@@ -128,6 +128,7 @@ export default function PlanPage() {
   });
   const [usageSaving, setUsageSaving] = useState(false);
   const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [taxMode, setTaxMode] = useState<"manual" | "upload">("manual");
   const [taxAnswers, setTaxAnswers] = useState({
     salary: "",
     km: "",
@@ -136,6 +137,10 @@ export default function PlanPage() {
     notes: "",
   });
   const [taxSaving, setTaxSaving] = useState(false);
+  const [taxFile, setTaxFile] = useState<File | null>(null);
+  const [ocrText, setOcrText] = useState("");
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrLoading, setOcrLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -362,7 +367,11 @@ export default function PlanPage() {
   };
 
   const handleTaxSubmit = async () => {
-    if (!taxAnswers.salary && !taxAnswers.km && !taxAnswers.donations) {
+    if (taxMode === "upload" && !ocrText) {
+      toast.error("Ajoute un fichier puis lance l’OCR.");
+      return;
+    }
+    if (taxMode === "manual" && !taxAnswers.salary && !taxAnswers.km && !taxAnswers.donations) {
       toast.error("Renseigne au moins un champ pour lancer l’analyse impôts.");
       return;
     }
@@ -392,6 +401,7 @@ export default function PlanPage() {
           children: Number(taxAnswers.children || 0),
           donations: Number(taxAnswers.donations || 0),
           notes: taxAnswers.notes,
+          ocrText,
         }),
       });
       if (response.status === 401) {
@@ -410,11 +420,45 @@ export default function PlanPage() {
       }
       toast.success("Impôts Boost généré");
       setTaxModalOpen(false);
+      setOcrText("");
+      setTaxFile(null);
+      setOcrProgress(0);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.error(message);
     } finally {
       setTaxSaving(false);
+    }
+  };
+
+  const handleOcr = async () => {
+    if (!taxFile) {
+      toast.error("Choisis un fichier PDF ou une image.");
+      return;
+    }
+    setOcrLoading(true);
+    setOcrProgress(0);
+    try {
+      const { default: Tesseract } = await import("tesseract.js");
+      const { data } = await Tesseract.recognize(taxFile, "fra", {
+        logger: (info) => {
+          if (info.status === "recognizing text" && info.progress) {
+            setOcrProgress(Math.round(info.progress * 100));
+          }
+        },
+      });
+      const text = (data.text || "").trim();
+      if (!text) {
+        toast.error("Impossible de lire le fichier. Essaie un scan plus net.");
+        return;
+      }
+      setOcrText(text);
+      toast.success("Texte extrait. Tu peux lancer l’analyse.");
+      setTaxMode("upload");
+    } catch (err) {
+      toast.error("Échec OCR. Essaie un autre fichier.");
+    } finally {
+      setOcrLoading(false);
     }
   };
 
@@ -714,13 +758,29 @@ export default function PlanPage() {
               Économies supplémentaires possibles sur tes impôts.
             </p>
           </div>
-          <Button
-            size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-600"
-            onClick={() => setTaxModalOpen(true)}
-          >
-            {taxItems.length > 0 ? "Refaire l’analyse impôts" : "Lancer l’analyse impôts"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-emerald-200 text-emerald-700"
+              onClick={() => {
+                setTaxMode("manual");
+                setTaxModalOpen(true);
+              }}
+            >
+              Remplir manuellement
+            </Button>
+            <Button
+              size="sm"
+              className="bg-emerald-600 text-white hover:bg-emerald-600"
+              onClick={() => {
+                setTaxMode("upload");
+                setTaxModalOpen(true);
+              }}
+            >
+              {taxItems.length > 0 ? "Refaire l’analyse impôts" : "Uploader avis d’impôt"}
+            </Button>
+          </div>
         </div>
         <Card className="border-emerald-200 bg-emerald-50/50">
           <CardContent className="space-y-2 py-4 text-sm text-emerald-900/90">
@@ -887,55 +947,83 @@ export default function PlanPage() {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Impôts Boost</h3>
               <p className="text-sm text-muted-foreground">
-                Réponds à 3 questions rapides pour détecter tes économies fiscales.
+                Choisis un mode rapide ou upload un avis d’impôt pour plus de précision.
               </p>
             </div>
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm text-emerald-800">
+              Ton fichier est analysé dans ton navigateur et supprimé immédiatement après.
+            </div>
             <div className="mt-4 grid gap-4 text-sm">
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Salaire mensuel moyen (€)</label>
+              <div className="grid gap-3">
+                <label className="text-xs text-muted-foreground">Uploader mon avis d’impôt (PDF ou image)</label>
                 <input
-                  className="w-full rounded-md border px-3 py-2"
-                  value={taxAnswers.salary}
-                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, salary: event.target.value }))}
-                  placeholder="2800"
+                  type="file"
+                  accept=".pdf,image/*"
+                  onChange={(event) => setTaxFile(event.target.files?.[0] ?? null)}
                 />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleOcr}
+                  disabled={ocrLoading || !taxFile}
+                >
+                  {ocrLoading ? `OCR... ${ocrProgress}%` : "Extraire le texte (OCR)"}
+                </Button>
+                {ocrText && (
+                  <p className="text-xs text-emerald-700">
+                    Texte extrait. Tu peux lancer l’analyse.
+                  </p>
+                )}
               </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Km domicile-travail / an</label>
-                <input
-                  className="w-full rounded-md border px-3 py-2"
-                  value={taxAnswers.km}
-                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, km: event.target.value }))}
-                  placeholder="12000"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Enfants à charge</label>
-                <input
-                  className="w-full rounded-md border px-3 py-2"
-                  value={taxAnswers.children}
-                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, children: event.target.value }))}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Dons estimés (€)</label>
-                <input
-                  className="w-full rounded-md border px-3 py-2"
-                  value={taxAnswers.donations}
-                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, donations: event.target.value }))}
-                  placeholder="200"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Autres infos (optionnel)</label>
-                <textarea
-                  className="w-full rounded-md border px-3 py-2"
-                  value={taxAnswers.notes}
-                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, notes: event.target.value }))}
-                  placeholder="Télétravail, primes, etc."
-                />
-              </div>
+              {taxMode === "manual" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Salaire mensuel moyen (€)</label>
+                    <input
+                      className="w-full rounded-md border px-3 py-2"
+                      value={taxAnswers.salary}
+                      onChange={(event) => setTaxAnswers((prev) => ({ ...prev, salary: event.target.value }))}
+                      placeholder="2800"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Km domicile-travail / an</label>
+                    <input
+                      className="w-full rounded-md border px-3 py-2"
+                      value={taxAnswers.km}
+                      onChange={(event) => setTaxAnswers((prev) => ({ ...prev, km: event.target.value }))}
+                      placeholder="12000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Enfants à charge</label>
+                    <input
+                      className="w-full rounded-md border px-3 py-2"
+                      value={taxAnswers.children}
+                      onChange={(event) => setTaxAnswers((prev) => ({ ...prev, children: event.target.value }))}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Dons estimés (€)</label>
+                    <input
+                      className="w-full rounded-md border px-3 py-2"
+                      value={taxAnswers.donations}
+                      onChange={(event) => setTaxAnswers((prev) => ({ ...prev, donations: event.target.value }))}
+                      placeholder="200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Autres infos (optionnel)</label>
+                    <textarea
+                      className="w-full rounded-md border px-3 py-2"
+                      value={taxAnswers.notes}
+                      onChange={(event) => setTaxAnswers((prev) => ({ ...prev, notes: event.target.value }))}
+                      placeholder="Télétravail, primes, etc."
+                    />
+                  </div>
+                </>
+              )}
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <Button variant="ghost" onClick={() => setTaxModalOpen(false)} disabled={taxSaving}>
