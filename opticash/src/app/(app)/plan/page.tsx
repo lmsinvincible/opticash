@@ -43,6 +43,22 @@ type PlanItemRow = {
   effort_minutes: number;
   risk_level: "low" | "medium" | "high";
   status: "todo" | "doing" | "done" | "skipped";
+  has_usage_questions?: boolean | null;
+  usage_context?: {
+    subscription?: string;
+    monthly_price_eur?: number | null;
+    currency?: string;
+  } | null;
+  usage_answers?: Record<string, string> | null;
+  usage_alternatives?: Array<{
+    name: string;
+    price: number;
+    gainAnnual: number;
+    reason: string;
+    difficulty: string;
+    steps: string[];
+  }> | null;
+  usage_refined?: boolean | null;
 };
 
 const statusLabel: Record<PlanItemRow["status"], string> = {
@@ -93,9 +109,17 @@ export default function PlanPage() {
   const [scan, setScan] = useState<ScanRow | null>(null);
   const [items, setItems] = useState<PlanItemRow[]>([]);
   const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [useDemo, setUseDemo] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const [usageItemId, setUsageItemId] = useState<string | null>(null);
+  const [usageAnswers, setUsageAnswers] = useState({
+    frequency: "",
+    people: "",
+    usage: "",
+  });
+  const [usageSaving, setUsageSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -122,6 +146,7 @@ export default function PlanPage() {
         const profile = await getProfile(user.id);
         if (!mounted) return;
         setIsPremium(Boolean(profile?.is_premium));
+        setIsAdmin(Boolean((profile as { is_admin?: boolean } | null)?.is_admin));
 
         if (latestPlan) {
           const allItems = await getPlanItems(latestPlan.id);
@@ -213,7 +238,7 @@ export default function PlanPage() {
     setExporting(true);
     void track("pdf_export_clicked");
     try {
-      if (FEATURES.HARD_PAYWALL && !isPremium) {
+      if (FEATURES.HARD_PAYWALL && !isPremium && !isAdmin) {
         toast.error("Réservé aux comptes Premium.");
         return;
       }
@@ -250,6 +275,68 @@ export default function PlanPage() {
       setExporting(false);
     }
   };
+
+  const handleUsageSubmit = async (itemId: string) => {
+    if (!usageAnswers.frequency || !usageAnswers.people) {
+      toast.error("Merci de répondre aux 2 questions obligatoires.");
+      return;
+    }
+    setUsageSaving(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        toast.error("Session invalide. Merci de vous reconnecter.");
+        return;
+      }
+      const response = await fetch("/api/ai/subscription-alternatives", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ plan_item_id: itemId, answers: usageAnswers }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Impossible d'affiner l'abonnement.");
+      }
+      const payload = (await response.json()) as { item: PlanItemRow };
+      if (payload.item) {
+        setItems((current) =>
+          current.map((item) => (item.id === payload.item.id ? payload.item : item))
+        );
+      }
+      toast.success("Recommandation affinée");
+      setUsageItemId(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      toast.error(message);
+    } finally {
+      setUsageSaving(false);
+    }
+  };
+
+  const hasData = Boolean(plan || items.length);
+  const showDemo = useDemo && !hasData;
+  const displayItems = showDemo ? demoItems : items;
+  const displayTotalGain = showDemo
+    ? demoItems.reduce((acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0), 0)
+    : plan?.total_gain_estimated_yearly_cents ?? totalGain;
+
+  const scoredItems = useMemo(() => {
+    return displayItems
+      .map((item) => {
+        const gain = Number(item.gain_estimated_yearly_cents || 0);
+        const score = calculateScore(gain, item.effort_minutes, item.risk_level);
+        const steps =
+          Array.isArray(item.action_steps) && item.action_steps.length > 0
+            ? item.action_steps
+            : defaultSteps(item.action_title);
+        return { ...item, score, steps };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [displayItems]);
 
   if (loading) {
     return (
@@ -289,27 +376,6 @@ export default function PlanPage() {
       </Card>
     );
   }
-
-  const hasData = Boolean(plan || items.length);
-  const showDemo = useDemo && !hasData;
-  const displayItems = showDemo ? demoItems : items;
-  const displayTotalGain = showDemo
-    ? demoItems.reduce((acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0), 0)
-    : plan?.total_gain_estimated_yearly_cents ?? totalGain;
-
-  const scoredItems = useMemo(() => {
-    return displayItems
-      .map((item) => {
-        const gain = Number(item.gain_estimated_yearly_cents || 0);
-        const score = calculateScore(gain, item.effort_minutes, item.risk_level);
-        const steps =
-          Array.isArray(item.action_steps) && item.action_steps.length > 0
-            ? item.action_steps
-            : defaultSteps(item.action_title);
-        return { ...item, score, steps };
-      })
-      .sort((a, b) => b.score - a.score);
-  }, [displayItems]);
 
   if (!hasData && !showDemo) {
     return (
@@ -388,7 +454,7 @@ export default function PlanPage() {
         </CardContent>
       </Card>
 
-      {FEATURES.HARD_PAYWALL && !isPremium && (
+      {FEATURES.HARD_PAYWALL && !isPremium && !isAdmin && (
         <Card className="border-dashed">
           <CardHeader>
             <CardTitle>Export PDF réservé aux comptes Premium</CardTitle>
@@ -405,6 +471,8 @@ export default function PlanPage() {
       <div className="grid gap-4">
         {scoredItems.map((item, index) => {
           const isPending = pendingIds.has(item.id);
+          const canAskUsage = Boolean(item.has_usage_questions && !item.usage_refined);
+          const alternatives = item.usage_alternatives ?? [];
           return (
             <Card key={item.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -436,6 +504,47 @@ export default function PlanPage() {
                     <li key={`${item.id}-${step}`}>{step}</li>
                   ))}
                 </ol>
+                {canAskUsage && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm">
+                    <p className="font-medium text-emerald-800">
+                      Optimise encore plus cet abonnement ?
+                    </p>
+                    <p className="text-emerald-700/80">
+                      Réponds en 20 secondes pour une alternative plus adaptée.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="mt-3 bg-emerald-600 text-white hover:bg-emerald-600"
+                      onClick={() => {
+                        setUsageItemId(item.id);
+                        setUsageAnswers({ frequency: "", people: "", usage: "" });
+                      }}
+                    >
+                      Répondre aux questions
+                    </Button>
+                  </div>
+                )}
+                {item.usage_refined && alternatives.length > 0 && (
+                  <div className="rounded-lg border border-emerald-200 bg-white/80 p-3 text-sm text-muted-foreground">
+                    <p className="font-medium text-emerald-800">
+                      Recommandation affinée grâce à tes réponses
+                    </p>
+                    <div className="mt-2 space-y-3">
+                      {alternatives.map((alt) => (
+                        <div key={alt.name} className="rounded-md border px-3 py-2">
+                          <p className="font-medium text-foreground">{alt.name}</p>
+                          <p>Prix: {alt.price} €/mois · Gain annuel: +{alt.gainAnnual} €</p>
+                          <p className="text-xs">{alt.reason}</p>
+                          <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs">
+                            {alt.steps?.map((step) => (
+                              <li key={`${alt.name}-${step}`}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -486,6 +595,88 @@ export default function PlanPage() {
           <span>Actions restantes : {showDemo ? demoItems.length : remainingCount}</span>
         </div>
       </div>
+
+      {usageItemId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Optimise ton abonnement</h3>
+              <p className="text-sm text-muted-foreground">
+                Réponds en 20 secondes pour obtenir une alternative plus adaptée.
+              </p>
+            </div>
+            <div className="mt-4 space-y-4 text-sm">
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Fréquence d’utilisation</label>
+                <select
+                  className="w-full rounded-md border px-3 py-2"
+                  value={usageAnswers.frequency}
+                  onChange={(event) =>
+                    setUsageAnswers((prev) => ({ ...prev, frequency: event.target.value }))
+                  }
+                >
+                  <option value="">Sélectionner</option>
+                  <option value="Tous les jours / plusieurs fois par semaine">
+                    Tous les jours / plusieurs fois par semaine
+                  </option>
+                  <option value="1–2 fois par semaine">1–2 fois par semaine</option>
+                  <option value="1 fois par mois ou moins">1 fois par mois ou moins</option>
+                  <option value="Presque jamais">Presque jamais</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Nombre de personnes / appareils</label>
+                <select
+                  className="w-full rounded-md border px-3 py-2"
+                  value={usageAnswers.people}
+                  onChange={(event) =>
+                    setUsageAnswers((prev) => ({ ...prev, people: event.target.value }))
+                  }
+                >
+                  <option value="">Sélectionner</option>
+                  <option value="Seul / 1 appareil">Seul / 1 appareil</option>
+                  <option value="En couple / famille / plusieurs écrans">
+                    En couple / famille / plusieurs écrans
+                  </option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Usage principal (optionnel)</label>
+                <select
+                  className="w-full rounded-md border px-3 py-2"
+                  value={usageAnswers.usage}
+                  onChange={(event) =>
+                    setUsageAnswers((prev) => ({ ...prev, usage: event.target.value }))
+                  }
+                >
+                  <option value="">Sélectionner</option>
+                  <option value="Films/séries">Films/séries</option>
+                  <option value="Musique en déplacement">Musique en déplacement</option>
+                  <option value="Design / création">Design / création</option>
+                  <option value="Réseautage pro">Réseautage pro</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setUsageItemId(null)}
+                disabled={usageSaving}
+              >
+                Passer
+              </Button>
+              <Button
+                onClick={() => handleUsageSubmit(usageItemId)}
+                disabled={usageSaving}
+                className="bg-emerald-600 text-white hover:bg-emerald-600"
+              >
+                {usageSaving ? "Analyse..." : "Valider mes réponses"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
