@@ -202,6 +202,7 @@ export default function PlanPage() {
         effort_minutes: item.effort === "low" ? 10 : item.effort === "medium" ? 25 : 45,
         risk_level: item.risk,
         status: "todo" as const,
+        category: "general",
         has_usage_questions: false,
         usage_context: {},
         usage_answers: {},
