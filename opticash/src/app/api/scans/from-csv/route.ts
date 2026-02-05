@@ -20,6 +20,8 @@ type FindingSeed = {
   title: string;
   description: string;
   gainCents: number;
+  monthlyPriceCents?: number;
+  subscriptionName?: string | null;
   effortMinutes: number;
   riskLevel: "low" | "medium" | "high";
   confidence: number;
@@ -40,6 +42,31 @@ const MAX_ROWS = 5000;
 const MAX_FINDINGS = 8;
 const MAX_EVIDENCE = 12;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+const SUBSCRIPTION_MATCHERS = [
+  { name: "Netflix", match: /netflix/ },
+  { name: "Spotify", match: /spotify/ },
+  { name: "Deezer", match: /deezer/ },
+  { name: "Disney+", match: /disney/ },
+  { name: "Apple Music", match: /apple music/ },
+  { name: "YouTube Premium", match: /youtube/ },
+  { name: "Canva", match: /canva/ },
+  { name: "LinkedIn Premium", match: /linkedin/ },
+  { name: "Amazon Prime", match: /prime/ },
+];
+
+const DONATION_MATCHERS = [
+  /don/i,
+  /donation/i,
+  /unicef/i,
+  /croix rouge/i,
+  /msf/i,
+  /medecins sans frontieres/i,
+  /restos? du coeur/i,
+  /secours populaire/i,
+  /secours catholique/i,
+  /telethon/i,
+];
 
 const defaultSteps = (title: string) => [
   "Vérifie les transactions concernées.",
@@ -109,11 +136,14 @@ const buildSubscriptionFinding = (label: string, entries: Transaction[]): Findin
   const amounts = entries.map((entry) => Math.abs(entry.amountCents));
   const avg = Math.round(amounts.reduce((acc, value) => acc + value, 0) / amounts.length);
   const gain = avg * 12;
+  const subscription = SUBSCRIPTION_MATCHERS.find((item) => item.match.test(label))?.name ?? null;
   return {
     category: "subscriptions",
     title: `Abonnement détecté : ${label}`,
     description: "Transactions récurrentes détectées.",
     gainCents: gain,
+    monthlyPriceCents: avg,
+    subscriptionName: subscription,
     effortMinutes: 5,
     riskLevel: "low",
     confidence: 0.9,
@@ -282,12 +312,13 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabaseAdmin
     .from("profiles")
-    .select("is_premium")
+    .select("is_premium, is_admin")
     .eq("id", userId)
     .maybeSingle();
 
   const isPremium = Boolean(profile?.is_premium);
-  if (!isPremium) {
+  const isAdmin = Boolean(profile?.is_admin);
+  if (!isPremium && !isAdmin) {
     const { count } = await supabaseAdmin
       .from("scans")
       .select("id", { count: "exact", head: true })
@@ -327,6 +358,7 @@ export async function POST(request: NextRequest) {
   }
 
   const transactions: Transaction[] = [];
+  let donationsCents = 0;
 
   rows.slice(1).forEach((row) => {
     const dateValue = row[dateIndex] ?? "";
@@ -336,6 +368,9 @@ export async function POST(request: NextRequest) {
     const amountCents = parseAmount(amountValue);
     if (!date || amountCents === null) return;
     if (amountCents >= 0) return;
+    if (DONATION_MATCHERS.some((regex) => regex.test(labelValue))) {
+      donationsCents += Math.abs(amountCents);
+    }
     transactions.push({
       date,
       label: labelValue,
@@ -385,7 +420,13 @@ export async function POST(request: NextRequest) {
       status: "done",
       started_at: now,
       finished_at: now,
-      summary: { source: "csv", total_gain_estimated_yearly_cents: totalGain },
+      summary: {
+        source: "csv",
+        total_gain_estimated_yearly_cents: totalGain,
+        tax_context: {
+          donations_detected_eur: Math.round((donationsCents / 100) * 100) / 100,
+        },
+      },
     })
     .select("*")
     .single();
@@ -488,6 +529,16 @@ export async function POST(request: NextRequest) {
     effort_minutes: finding.effortMinutes,
     risk_level: finding.riskLevel,
     priority_score: Math.round((finding.gainCents * finding.confidence) / 100) / 10,
+    has_usage_questions: Boolean(finding.subscriptionName),
+    usage_context: finding.subscriptionName
+      ? {
+          subscription: finding.subscriptionName,
+          monthly_price_eur: finding.monthlyPriceCents
+            ? Math.round((finding.monthlyPriceCents / 100) * 100) / 100
+            : null,
+          currency: "EUR",
+        }
+      : {},
     status: "todo",
   }));
 

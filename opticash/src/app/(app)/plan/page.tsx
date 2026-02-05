@@ -30,6 +30,8 @@ type PlanRow = {
 type ScanRow = {
   id: string;
   created_at: string;
+  tax_answers?: Record<string, number | string> | null;
+  tax_generated?: boolean | null;
 };
 
 type PlanItemRow = {
@@ -43,6 +45,9 @@ type PlanItemRow = {
   effort_minutes: number;
   risk_level: "low" | "medium" | "high";
   status: "todo" | "doing" | "done" | "skipped";
+  category?: string | null;
+  proof?: string | null;
+  reasoning?: string[] | null;
   has_usage_questions?: boolean | null;
   usage_context?: {
     subscription?: string;
@@ -120,6 +125,15 @@ export default function PlanPage() {
     usage: "",
   });
   const [usageSaving, setUsageSaving] = useState(false);
+  const [taxModalOpen, setTaxModalOpen] = useState(false);
+  const [taxAnswers, setTaxAnswers] = useState({
+    salary: "",
+    km: "",
+    children: "",
+    donations: "",
+    notes: "",
+  });
+  const [taxSaving, setTaxSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -322,6 +336,51 @@ export default function PlanPage() {
     }
   };
 
+  const handleTaxSubmit = async () => {
+    if (!taxAnswers.salary && !taxAnswers.km && !taxAnswers.donations) {
+      toast.error("Renseigne au moins un champ pour lancer l’analyse impôts.");
+      return;
+    }
+    setTaxSaving(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        toast.error("Session invalide. Merci de vous reconnecter.");
+        return;
+      }
+      const response = await fetch("/api/ai/tax-actions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          salary: Number(taxAnswers.salary || 0),
+          km: Number(taxAnswers.km || 0),
+          children: Number(taxAnswers.children || 0),
+          donations: Number(taxAnswers.donations || 0),
+          notes: taxAnswers.notes,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Impossible de générer les actions impôts.");
+      }
+      const payload = (await response.json()) as { items: PlanItemRow[] };
+      if (payload.items?.length) {
+        setItems((current) => [...current, ...payload.items]);
+      }
+      toast.success("Impôts Boost généré");
+      setTaxModalOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      toast.error(message);
+    } finally {
+      setTaxSaving(false);
+    }
+  };
+
   const hasData = Boolean(plan || items.length);
   const showDemo = useDemo && !hasData;
   const displayItems = showDemo ? demoItems : items;
@@ -342,6 +401,9 @@ export default function PlanPage() {
       })
       .sort((a, b) => b.score - a.score);
   }, [displayItems]);
+
+  const taxItems = scoredItems.filter((item) => item.category === "tax");
+  const coreItems = scoredItems.filter((item) => item.category !== "tax");
 
   if (loading) {
     return (
@@ -474,7 +536,7 @@ export default function PlanPage() {
       )}
 
       <div className="grid gap-4">
-        {scoredItems.map((item, index) => {
+        {coreItems.map((item, index) => {
           const isPending = pendingIds.has(item.id);
           const canAskUsage = Boolean(item.has_usage_questions && !item.usage_refined);
           const alternatives = item.usage_alternatives ?? [];
@@ -594,6 +656,83 @@ export default function PlanPage() {
         })}
       </div>
 
+      <div className="mt-10 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xl font-semibold">Impôts Boost</h3>
+            <p className="text-sm text-muted-foreground">
+              Économies supplémentaires possibles sur tes impôts.
+            </p>
+          </div>
+          {!taxItems.length && (
+            <Button
+              size="sm"
+              className="bg-emerald-600 text-white hover:bg-emerald-600"
+              onClick={() => setTaxModalOpen(true)}
+            >
+              Lancer l’analyse impôts
+            </Button>
+          )}
+        </div>
+        {taxItems.length === 0 ? (
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle>Aucune action impôts générée</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Réponds à 3 questions rapides pour obtenir tes opportunités fiscales.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {taxItems.map((item, index) => (
+              <Card key={item.id}>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>#{index + 1}</span>
+                      <Badge variant="secondary">{statusLabel[item.status]}</Badge>
+                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                        {item.score}/100
+                      </Badge>
+                    </div>
+                    <CardTitle className="mt-2 text-base">{item.action_title}</CardTitle>
+                  </div>
+                  <div className="text-right text-sm text-muted-foreground">
+                    <p className="text-base font-semibold text-foreground">
+                      {formatCents(item.gain_estimated_yearly_cents)}/an
+                    </p>
+                    <p>{item.effort_minutes} min · {effortLabel(item.effort_minutes)}</p>
+                    <Badge variant="outline" className="mt-2">
+                      Risque: {riskLabel[item.risk_level]}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  {item.proof ? (
+                    <p className="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-emerald-800">
+                      Preuve : {item.proof}
+                    </p>
+                  ) : null}
+                  {Array.isArray(item.reasoning) && item.reasoning.length > 0 ? (
+                    <ul className="list-disc pl-5">
+                      {item.reasoning.map((line) => (
+                        <li key={`${item.id}-${line}`}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <ol className="list-decimal space-y-1 pl-5">
+                    {item.steps.map((step) => (
+                      <li key={`${item.id}-${step}`}>{step}</li>
+                    ))}
+                  </ol>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="sticky bottom-4 z-10 mx-auto w-full max-w-4xl rounded-xl border bg-background px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <span>Gain estimé : {formatCents(displayTotalGain)}</span>
@@ -677,6 +816,78 @@ export default function PlanPage() {
                 className="bg-emerald-600 text-white hover:bg-emerald-600"
               >
                 {usageSaving ? "Analyse..." : "Valider mes réponses"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {taxModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Impôts Boost</h3>
+              <p className="text-sm text-muted-foreground">
+                Réponds à 3 questions rapides pour détecter tes économies fiscales.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-4 text-sm">
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Salaire mensuel moyen (€)</label>
+                <input
+                  className="w-full rounded-md border px-3 py-2"
+                  value={taxAnswers.salary}
+                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, salary: event.target.value }))}
+                  placeholder="2800"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Km domicile-travail / an</label>
+                <input
+                  className="w-full rounded-md border px-3 py-2"
+                  value={taxAnswers.km}
+                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, km: event.target.value }))}
+                  placeholder="12000"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Enfants à charge</label>
+                <input
+                  className="w-full rounded-md border px-3 py-2"
+                  value={taxAnswers.children}
+                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, children: event.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Dons estimés (€)</label>
+                <input
+                  className="w-full rounded-md border px-3 py-2"
+                  value={taxAnswers.donations}
+                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, donations: event.target.value }))}
+                  placeholder="200"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Autres infos (optionnel)</label>
+                <textarea
+                  className="w-full rounded-md border px-3 py-2"
+                  value={taxAnswers.notes}
+                  onChange={(event) => setTaxAnswers((prev) => ({ ...prev, notes: event.target.value }))}
+                  placeholder="Télétravail, primes, etc."
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <Button variant="ghost" onClick={() => setTaxModalOpen(false)} disabled={taxSaving}>
+                Passer
+              </Button>
+              <Button
+                onClick={handleTaxSubmit}
+                disabled={taxSaving}
+                className="bg-emerald-600 text-white hover:bg-emerald-600"
+              >
+                {taxSaving ? "Analyse..." : "Valider mes réponses"}
               </Button>
             </div>
           </div>
