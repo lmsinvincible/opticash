@@ -305,8 +305,8 @@ export default function PlanPage() {
     }
     setUsageSaving(true);
     try {
-      let { data } = await supabase.auth.getSession();
-      let token = data.session?.access_token;
+      const sessionResult = await supabase.auth.getSession();
+      let token = sessionResult.data.session?.access_token ?? null;
       if (!token) {
         const refreshed = await supabase.auth.refreshSession();
         token = refreshed.data.session?.access_token ?? null;
@@ -350,8 +350,8 @@ export default function PlanPage() {
     }
     setTaxSaving(true);
     try {
-      let { data } = await supabase.auth.getSession();
-      let token = data.session?.access_token;
+      const sessionResult = await supabase.auth.getSession();
+      let token = sessionResult.data.session?.access_token ?? null;
       if (!token) {
         const refreshed = await supabase.auth.refreshSession();
         token = refreshed.data.session?.access_token ?? null;
