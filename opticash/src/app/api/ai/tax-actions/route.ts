@@ -133,8 +133,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Plan not found" }, { status: 404 });
   }
 
-  const summary = (scan.summary as Record<string, any>) ?? {};
-  const taxContext = summary.tax_context ?? {};
+  const summary = (scan.summary as Record<string, unknown>) ?? {};
+  const taxContext =
+    typeof summary.tax_context === "object" && summary.tax_context
+      ? (summary.tax_context as Record<string, unknown>)
+      : {};
   const donationsDetected = Number(taxContext.donations_detected_eur ?? 0);
 
   const input = {
