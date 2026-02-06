@@ -15,15 +15,13 @@ export default function ExpenseMerchantPage() {
   const categoryName = deslugify(categorySlug ?? "");
   const merchantName = deslugify(merchantSlug ?? "");
 
-  const items = readExpensesCache() ?? [];
-  const filtered = useMemo(
-    () =>
-      items.filter(
-        (item) =>
-          (item.categorie || "Non classé") === categoryName && (item.label || "") === merchantName
-      ),
-    [items, categoryName, merchantName]
-  );
+  const filtered = useMemo(() => {
+    const items = readExpensesCache() ?? [];
+    return items.filter(
+      (item) =>
+        (item.categorie || "Non classé") === categoryName && (item.label || "") === merchantName
+    );
+  }, [categoryName, merchantName]);
 
   return (
     <div className="space-y-6">

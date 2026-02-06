@@ -375,7 +375,7 @@ export default function CsvImportPage() {
           </CardHeader>
           <CardContent>
             <p className="mb-3 text-xs text-muted-foreground">
-              Aperçu sur 20 lignes. L'analyse complète porte sur tout le fichier.
+              Aperçu sur 20 lignes. L&apos;analyse complète porte sur tout le fichier.
             </p>
             <div className="overflow-auto">
               <table className="w-full text-sm">
