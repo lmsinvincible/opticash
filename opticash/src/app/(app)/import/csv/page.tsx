@@ -19,6 +19,7 @@ type UploadResponse = {
 type ScanResponse = {
   scan_id: string;
   plan_id: string;
+  analyzed_rows?: number;
 };
 
 export default function CsvImportPage() {
@@ -35,6 +36,7 @@ export default function CsvImportPage() {
     amount: "",
   });
   const [parsedRowsCount, setParsedRowsCount] = useState(0);
+  const [analyzedRows, setAnalyzedRows] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [scanCount, setScanCount] = useState(0);
@@ -228,6 +230,7 @@ export default function CsvImportPage() {
 
       const result = (await response.json()) as ScanResponse;
       setImportResult(result);
+      setAnalyzedRows(result.analyzed_rows ?? parsedRowsCount);
       window.scrollTo({ top: 0, behavior: "smooth" });
       toast.success("Scan CSV terminé");
       localStorage.setItem("opticash:dashboard_refresh", "1");
@@ -247,7 +250,7 @@ export default function CsvImportPage() {
             <CardTitle>Import réussi ✅ Scan créé.</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span>{parsedRowsCount} lignes analysées.</span>
+            <span>{analyzedRows || parsedRowsCount} lignes analysées.</span>
             <Button size="sm" asChild>
               <a href="/plan">Voir mon plan</a>
             </Button>

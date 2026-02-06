@@ -347,6 +347,7 @@ export async function POST(request: NextRequest) {
   }
 
   const rows = parsed.data as string[][];
+  const analyzedRows = Math.max(0, rows.length - 1);
   const header = uploadRow.columns as string[];
   const columnIndex = (col: string) => header.indexOf(col);
   const dateIndex = columnIndex(mapping.date);
@@ -445,6 +446,7 @@ export async function POST(request: NextRequest) {
         source: "csv",
         upload_id,
         mapping,
+        analyzed_rows: analyzedRows,
         total_gain_estimated_yearly_cents: totalGain,
         tax_context: {
           donations_detected_eur: Math.round((donationsCents / 100) * 100) / 100,
@@ -573,5 +575,5 @@ export async function POST(request: NextRequest) {
 
   await supabaseAdmin.from("uploads").update({ status: "parsed" }).eq("id", upload_id);
 
-  return NextResponse.json({ scan_id: scanRow.id, plan_id: planRow.id });
+  return NextResponse.json({ scan_id: scanRow.id, plan_id: planRow.id, analyzed_rows: analyzedRows });
 }

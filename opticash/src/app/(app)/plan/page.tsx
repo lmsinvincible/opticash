@@ -33,6 +33,9 @@ type ScanRow = {
   created_at: string;
   tax_answers?: Record<string, number | string> | null;
   tax_generated?: boolean | null;
+  summary?: {
+    analyzed_rows?: number;
+  } | null;
 };
 
 type PlanItemRow = {
@@ -584,6 +587,9 @@ export default function PlanPage() {
               Dernière analyse : {new Date(scan.created_at).toLocaleDateString("fr-FR")}
             </Badge>
           )}
+          {scan?.summary?.analyzed_rows ? (
+            <Badge variant="secondary">{scan.summary.analyzed_rows} lignes analysées</Badge>
+          ) : null}
           <div className="flex items-center gap-2">
             <Button
               size="sm"
