@@ -67,6 +67,7 @@ export default function ExpenseLinePage() {
   }, [history]);
 
   const confidence = item?.lieu ? 92 : 85;
+  const totalLines = items.length;
 
   if (!item || Number.isNaN(lineId)) {
     return (
@@ -115,6 +116,17 @@ export default function ExpenseLinePage() {
 
   return (
     <div className="space-y-6">
+      <nav className="text-xs text-muted-foreground">
+        <Link className="hover:text-foreground" href="/">
+          Accueil
+        </Link>{" "}
+        &gt;{" "}
+        <Link className="hover:text-foreground" href="/expenses">
+          Dépenses
+        </Link>{" "}
+        &gt; {item.categorie} &gt; {item.lieu || "Transaction"} &gt; {item.date}
+      </nav>
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold">Détail de la transaction du {item.date}</h2>
@@ -123,6 +135,13 @@ export default function ExpenseLinePage() {
         <Button variant="outline" asChild>
           <Link href={`/expenses?line=${item.line}`}>Retour aux dépenses</Link>
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">
+          Ligne #{item.line}
+          {totalLines > 0 ? ` / ${totalLines}` : ""} du CSV
+        </Badge>
       </div>
 
       <Card>

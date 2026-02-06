@@ -263,6 +263,7 @@ export default function ExpensesPage() {
                 <th className="py-2 pr-4">Montant</th>
                 <th className="py-2 pr-4">Catégorie</th>
                 <th className="py-2 pr-4">Détail IA</th>
+                <th className="py-2 pr-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -292,6 +293,11 @@ export default function ExpensesPage() {
                       <div className="text-muted-foreground">{item.type}</div>
                       <div className="text-emerald-700">{item.opportunite}</div>
                     </div>
+                  </td>
+                  <td className="py-3 pr-4 text-right">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/expenses/line/${item.line}`}>Voir détails</Link>
+                    </Button>
                   </td>
                   </tr>
                 );
