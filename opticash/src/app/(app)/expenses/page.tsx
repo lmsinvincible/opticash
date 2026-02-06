@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
@@ -28,6 +29,8 @@ export default function ExpensesPage() {
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [analyzedCount, setAnalyzedCount] = useState(0);
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
 
   useEffect(() => {
     let mounted = true;
@@ -106,6 +109,26 @@ export default function ExpensesPage() {
     [items]
   );
   const categories = useMemo(() => groupByCategory(items), [items]);
+  const filteredItems = useMemo(() => {
+    if (!categoryParam) return items;
+    if (categoryParam === "frais-bancaires") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("frais bancaires") ||
+          /frais|cotisation|tenue|commission|agios|package|carte|incident/i.test(item.label)
+      );
+    }
+    if (categoryParam === "abonnements") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("abonnements") ||
+          /netflix|spotify|deezer|apple music|amazon prime|canva|linkedin/i.test(item.label)
+      );
+    }
+    return items.filter(
+      (item) => (item.categorie || "Non classé") === categoryParam.replace(/-/g, " ")
+    );
+  }, [items, categoryParam]);
 
   if (loading) {
     return (
@@ -165,7 +188,7 @@ export default function ExpensesPage() {
           {categories.map((category) => (
             <Link
               key={category.slug}
-              href={`/expenses/category/${category.slug}`}
+              href={`/expenses?category=${category.slug}`}
               className="rounded-lg border px-4 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/50"
             >
               <div className="flex items-center justify-between">
@@ -185,7 +208,14 @@ export default function ExpensesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tableau ligne par ligne</CardTitle>
+          <CardTitle>
+            Tableau ligne par ligne
+            {categoryParam ? (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                (filtre: {categoryParam})
+              </span>
+            ) : null}
+          </CardTitle>
         </CardHeader>
         <CardContent className="overflow-auto">
           <table className="w-full text-sm">
@@ -200,7 +230,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <tr key={`${item.line}-${item.label}`} className="border-t">
                   <td className="py-3 pr-4 text-muted-foreground">{item.line}</td>
                   <td className="py-3 pr-4">{item.date}</td>

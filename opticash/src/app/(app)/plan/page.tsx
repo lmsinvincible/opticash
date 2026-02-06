@@ -772,12 +772,12 @@ export default function PlanPage() {
                       </Button>
                       {item.category === "frais-bancaires" && (
                         <Button size="sm" variant="outline" asChild>
-                          <Link href="/expenses/category/frais-bancaires">Détails frais bancaires</Link>
+                          <Link href="/expenses?category=frais-bancaires">Détails frais bancaires</Link>
                         </Button>
                       )}
                       {item.category === "abonnements" && (
                         <Button size="sm" variant="outline" asChild>
-                          <Link href="/expenses/category/abonnements">Détails abonnements</Link>
+                          <Link href="/expenses?category=abonnements">Détails abonnements</Link>
                         </Button>
                       )}
                     </div>
