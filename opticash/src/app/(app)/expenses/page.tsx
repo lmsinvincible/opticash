@@ -32,6 +32,7 @@ export default function ExpensesPage() {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const lineParam = searchParams.get("line");
 
   useEffect(() => {
     let mounted = true;
@@ -265,11 +266,24 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleItems.map((item) => (
-                <tr key={`${item.line}-${item.label}`} className="border-t">
+              {visibleItems.map((item) => {
+                const isActive = lineParam && Number(lineParam) === item.line;
+                return (
+                  <tr
+                    key={`${item.line}-${item.label}`}
+                    id={`line-${item.line}`}
+                    className={`border-t ${isActive ? "bg-emerald-50/60" : ""}`}
+                  >
                   <td className="py-3 pr-4 text-muted-foreground">{item.line}</td>
                   <td className="py-3 pr-4">{item.date}</td>
-                  <td className="py-3 pr-4">{item.label}</td>
+                  <td className="py-3 pr-4">
+                    <Link
+                      className="font-medium text-emerald-700 hover:underline"
+                      href={`/expenses/line/${item.line}`}
+                    >
+                      {item.label}
+                    </Link>
+                  </td>
                   <td className="py-3 pr-4">{formatCents(Math.round(item.amount * 100))}</td>
                   <td className="py-3 pr-4">{item.categorie}</td>
                   <td className="py-3 pr-4">
@@ -279,8 +293,9 @@ export default function ExpensesPage() {
                       <div className="text-emerald-700">{item.opportunite}</div>
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {visibleItems.length === 0 && (
