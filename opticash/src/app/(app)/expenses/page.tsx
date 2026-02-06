@@ -29,6 +29,7 @@ export default function ExpensesPage() {
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [analyzedCount, setAnalyzedCount] = useState(0);
+  const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
 
@@ -104,9 +105,28 @@ export default function ExpensesPage() {
     void fetchData();
   }, [isPremium, isAdmin]);
 
+  const visibleItems = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return filteredItems;
+    return filteredItems.filter((item) => {
+      const hay = [
+        item.label,
+        item.categorie,
+        item.lieu,
+        item.type,
+        item.opportunite,
+        item.date,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(trimmed);
+    });
+  }, [filteredItems, query]);
+
   const opportunities = useMemo(
-    () => items.filter((item) => item.opportunite && item.opportunite !== "—").length,
-    [items]
+    () => visibleItems.filter((item) => item.opportunite && item.opportunite !== "—").length,
+    [visibleItems]
   );
   const categories = useMemo(() => groupByCategory(items), [items]);
   const filteredItems = useMemo(() => {
@@ -172,13 +192,28 @@ export default function ExpensesPage() {
         <div>
           <h2 className="text-2xl font-semibold">Dépenses détaillées</h2>
           <p className="text-sm text-muted-foreground">
-            {analyzedCount} lignes analysées · 500 lignes max · {opportunities} opportunités détectées
+            {analyzedCount} lignes analysées · 500 lignes max · {visibleItems.length} affichées ·{" "}
+            {opportunities} opportunités détectées
           </p>
         </div>
         <Button variant="outline" asChild>
           <Link href={routes.app.plan}>Retour au plan</Link>
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Rechercher une dépense</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Rechercher un libellé, un lieu, une catégorie..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -230,7 +265,7 @@ export default function ExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item) => (
+              {visibleItems.map((item) => (
                 <tr key={`${item.line}-${item.label}`} className="border-t">
                   <td className="py-3 pr-4 text-muted-foreground">{item.line}</td>
                   <td className="py-3 pr-4">{item.date}</td>
@@ -248,7 +283,7 @@ export default function ExpensesPage() {
               ))}
             </tbody>
           </table>
-          {items.length === 0 && (
+          {visibleItems.length === 0 && (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Aucune ligne détectée. Refais un scan CSV.
             </div>
