@@ -250,7 +250,11 @@ export default function CsvImportPage() {
             <CardTitle>Import réussi ✅ Scan créé.</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span>{analyzedRows || parsedRowsCount} lignes analysées.</span>
+            {analyzedRows ? (
+              <span>{analyzedRows} lignes analysées.</span>
+            ) : (
+              <span>Analyse complète terminée.</span>
+            )}
             <Button size="sm" asChild>
               <a href="/plan">Voir mon plan</a>
             </Button>
