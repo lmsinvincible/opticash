@@ -22,9 +22,9 @@ export default function ExpenseCategoryPage() {
   const params = useParams();
   const slug = Array.isArray(params.category) ? params.category[0] : params.category;
   const categoryName = deslugify(slug ?? "");
+  const items = useMemo(() => readExpensesCache() ?? [], []);
 
   const filtered = useMemo(() => {
-    const items = readExpensesCache() ?? [];
     if (slug === "frais-bancaires") {
       return items.filter(
         (item) =>
@@ -40,7 +40,7 @@ export default function ExpenseCategoryPage() {
       );
     }
     return items.filter((item) => (item.categorie || "Non classé") === categoryName);
-  }, [categoryName, slug]);
+  }, [categoryName, items, slug]);
   const merchants = useMemo(() => groupByMerchant(filtered), [filtered]);
 
   return (

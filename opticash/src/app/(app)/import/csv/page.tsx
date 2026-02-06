@@ -303,7 +303,7 @@ export default function CsvImportPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-            <span>Pour tester rapidement l’import.</span>
+            <span>Pour tester rapidement l&apos;import.</span>
             <Button variant="outline" size="sm" asChild>
               <a href="/templates/opticash-template.csv" download>
                 Télécharger un modèle CSV
@@ -414,7 +414,11 @@ export default function CsvImportPage() {
               <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                 <div className="mb-2 font-medium text-foreground">Import réussi ✅ Scan créé.</div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <span>{parsedRowsCount} lignes analysées.</span>
+                  {analyzedRows ? (
+                    <span>{analyzedRows} lignes analysées.</span>
+                  ) : (
+                    <span>Analyse complète terminée.</span>
+                  )}
                   <Button size="sm" asChild>
                     <a href="/plan">Voir mon plan</a>
                   </Button>

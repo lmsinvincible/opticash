@@ -14,14 +14,14 @@ export default function ExpenseMerchantPage() {
   const merchantSlug = Array.isArray(params.merchant) ? params.merchant[0] : params.merchant;
   const categoryName = deslugify(categorySlug ?? "");
   const merchantName = deslugify(merchantSlug ?? "");
+  const items = useMemo(() => readExpensesCache() ?? [], []);
 
   const filtered = useMemo(() => {
-    const items = readExpensesCache() ?? [];
     return items.filter(
       (item) =>
         (item.categorie || "Non classé") === categoryName && (item.label || "") === merchantName
     );
-  }, [categoryName, merchantName]);
+  }, [categoryName, items, merchantName]);
 
   return (
     <div className="space-y-6">
