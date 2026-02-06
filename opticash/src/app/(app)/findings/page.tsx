@@ -2,22 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { EvidenceRow } from "@/components/opticash/evidence-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { routes, FEATURES } from "@/lib/config";
+import { routes } from "@/lib/config";
+import { FEATURES } from "@/lib/config";
 import { track } from "@/lib/events";
 import { formatCents } from "@/lib/money";
 import { findings as demoFindings } from "@/lib/mock-data";
-import {
-  getEvidenceForFinding,
-  getFindingsForScan,
-  getLatestScan,
-  getSessionUser,
-  updateFindingStatus,
-} from "@/lib/supabase/queries";
+import { getFindingsForScan, getLatestScan, getSessionUser, updateFindingStatus } from "@/lib/supabase/queries";
 
 type FindingRow = {
   id: string;
@@ -90,8 +83,6 @@ export default function FindingsPage() {
   const [findings, setFindings] = useState<FindingRow[]>([]);
   const [category, setCategory] = useState<(typeof categoryFilters)[number]["value"]>("all");
   const [status, setStatus] = useState<(typeof statusTabs)[number]["value"]>("all");
-  const [evidence, setEvidence] = useState<EvidenceRowType[]>([]);
-  const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [useDemo, setUseDemo] = useState(false);
 
@@ -182,32 +173,14 @@ export default function FindingsPage() {
     [filteredFindings]
   );
 
-  const handleOpenSheet = async (finding: FindingRow) => {
-    if (useDemo) {
-      setEvidence(
-        demoFindings
-          .find((item) => item.id === finding.id)
-          ?.evidence.map((item) => ({
-            id: item.id,
-            occurred_at: item.date,
-            amount_cents: item.amount,
-            currency: "EUR",
-            merchant: item.label,
-            raw_label: item.label,
-          })) ?? []
-      );
-      return;
+  const detailLinkForFinding = (finding: FindingRow) => {
+    if (finding.category === "bank_fees") {
+      return "/expenses?category=frais-bancaires";
     }
-    setEvidenceLoading(true);
-    try {
-      const rows = await getEvidenceForFinding(finding.id, 50);
-      setEvidence(rows as EvidenceRowType[]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erreur inconnue";
-      setError(message);
-    } finally {
-      setEvidenceLoading(false);
+    if (finding.category === "subscriptions") {
+      return "/expenses?category=abonnements";
     }
+    return `/expenses?category=${categoryLabels[finding.category].toLowerCase()}`;
   };
 
   const handleStatusUpdate = async (findingId: string, nextStatus: FindingRow["status"]) => {
@@ -371,140 +344,22 @@ export default function FindingsPage() {
           <h3 className="text-lg font-semibold">{categoryLabels[group as FindingRow["category"]]}</h3>
           <div className="grid gap-4">
             {items.map((finding) => (
-              <Sheet key={finding.id}>
-                <SheetTrigger asChild>
-                  <button
-                    type="button"
-                    className="text-left"
-                    onClick={() => handleOpenSheet(finding)}
-                  >
-                    <Card>
-                      <CardHeader className="flex flex-row items-start justify-between gap-4">
-                        <div>
-                          <CardTitle className="text-base">{finding.title}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{finding.description}</p>
-                        </div>
-                        <Badge variant="secondary">
-                          {formatCents(finding.gain_estimated_yearly_cents)}/an
-                        </Badge>
-                      </CardHeader>
-                      <CardContent className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <span>Statut : {statusLabels[finding.status]}</span>
-                        <span>Confiance : {(finding.confidence * 100).toFixed(0)}%</span>
-                      </CardContent>
-                    </Card>
-                  </button>
-                </SheetTrigger>
-                <SheetContent className="w-full max-w-xl">
-                  <SheetHeader>
-                    <SheetTitle>{finding.title}</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6 space-y-6">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge>{categoryLabels[finding.category]}</Badge>
-                      <Badge variant="outline">Risque: {finding.risk_level}</Badge>
-                      <Badge variant="secondary">{statusLabels[finding.status]}</Badge>
-                    </div>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <p>Gain estimé annuel</p>
-                      <p className="text-xl font-semibold text-foreground">
-                        {formatCents(finding.gain_estimated_yearly_cents)}
-                      </p>
-                      <div className="flex flex-wrap gap-3 text-xs">
-                        <span>Effort: {finding.effort_minutes} min</span>
-                        <span>Confiance: {(finding.confidence * 100).toFixed(0)}%</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">Justification</p>
-                      {finding.explain ? (
-                        <div className="space-y-3 text-sm">
-                          {finding.explain.calc_steps?.length ? (
-                            <div>
-                              <p className="font-medium">Étapes de calcul</p>
-                              <ul className="mt-2 space-y-1 text-muted-foreground">
-                                {finding.explain.calc_steps.map((step, index) => (
-                                  <li key={`${finding.id}-step-${index}`}>{step}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          {finding.explain.assumptions?.length ? (
-                            <div>
-                              <p className="font-medium">Hypothèses</p>
-                              <ul className="mt-2 space-y-1 text-muted-foreground">
-                                {finding.explain.assumptions.map((assumption, index) => (
-                                  <li key={`${finding.id}-assumption-${index}`}>{assumption}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          {finding.explain.recommendation ? (
-                            <div>
-                              <p className="font-medium">Recommandation</p>
-                              <p className="text-muted-foreground">{finding.explain.recommendation}</p>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Justification indisponible pour ce finding.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">Preuves</p>
-                      {evidenceLoading ? (
-                        <Card className="h-20 animate-pulse" />
-                      ) : evidence.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Pas de preuves disponibles.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {evidence.map((row) => (
-                              <EvidenceRow
-                              key={row.id}
-                              evidence={{
-                                id: row.id,
-                                label: row.merchant ?? row.raw_label ?? "Transaction",
-                                amount: Number(row.amount_cents ?? 0),
-                                date: row.occurred_at ?? "",
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        disabled={pendingIds.has(finding.id)}
-                        onClick={() => handleStatusUpdate(finding.id, "resolved")}
-                      >
-                        Résolu
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={pendingIds.has(finding.id)}
-                        onClick={() => handleStatusUpdate(finding.id, "snoozed")}
-                      >
-                        Rappeler plus tard
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={pendingIds.has(finding.id)}
-                        onClick={() => handleStatusUpdate(finding.id, "open")}
-                      >
-                        Rouvrir
-                      </Button>
-                    </div>
+              <Card key={finding.id}>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-base">{finding.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{finding.description}</p>
                   </div>
-                </SheetContent>
-              </Sheet>
+                  <Badge variant="secondary">{formatCents(finding.gain_estimated_yearly_cents)}/an</Badge>
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                  <span>Statut : {statusLabels[finding.status]}</span>
+                  <span>Confiance : {(finding.confidence * 100).toFixed(0)}%</span>
+                  <Button size="sm" asChild>
+                    <Link href={detailLinkForFinding(finding)}>Voir détails</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
