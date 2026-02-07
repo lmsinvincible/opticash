@@ -448,20 +448,25 @@ export default function PlanPage() {
     setOcrProgress(0);
     setOcrOverlay("running");
     let simulated: ReturnType<typeof setInterval> | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
       const { default: Tesseract } = await import("tesseract.js");
-      setOcrProgress(2);
+      setOcrProgress(0);
       simulated = setInterval(() => {
-        setOcrProgress((prev) => (prev >= 95 ? prev : prev + 3));
+        setOcrProgress((prev) => {
+          if (prev >= 80) return prev;
+          return Math.min(80, prev + 1);
+        });
       }, 350);
+      timeout = setTimeout(() => {
+        if (simulated) clearInterval(simulated);
+        setOcrProgress(100);
+        setOcrOverlay("idle");
+      }, 30000);
       const { data } = await Tesseract.recognize(taxFile, "fra", {
         logger: (info) => {
           if (info.status === "recognizing text" && info.progress) {
-            if (simulated) {
-              clearInterval(simulated);
-              simulated = null;
-            }
-            setOcrProgress(Math.max(5, Math.round(info.progress * 100)));
+            setOcrProgress(Math.round(info.progress * 100));
           }
         },
       });
@@ -469,6 +474,14 @@ export default function PlanPage() {
       if (!text) {
         toast.error("Impossible de lire le fichier. Essaie un scan plus net.");
         return;
+      }
+      if (simulated) {
+        clearInterval(simulated);
+        simulated = null;
+      }
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
       }
       setOcrText(text);
       toast.success("Texte extrait. Tu peux lancer l’analyse.");
@@ -481,6 +494,7 @@ export default function PlanPage() {
       setOcrOverlay("idle");
     } finally {
       if (simulated) clearInterval(simulated);
+      if (timeout) clearTimeout(timeout);
       setOcrLoading(false);
     }
   };
@@ -1104,6 +1118,7 @@ export default function PlanPage() {
                 ? "Analyse terminée !"
                 : "Analyse de ton avis d’impôt en cours… (5–15 secondes)"}
             </h3>
+            <div className="mt-2 text-lg font-medium">Analyse en cours… {ocrProgress}%</div>
             <p className="mt-2 text-sm text-muted-foreground">
               Traitement local sur ton appareil – tes données sont supprimées juste après. RGPD
               compliant.
