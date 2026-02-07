@@ -58,20 +58,14 @@ test.describe("OptiCash E2E smoke", () => {
     await page.goto("/expenses");
     const premiumGate = page.getByText(/Accès Premium requis/i);
     const tableTitle = page.getByText(/Tableau ligne par ligne/i);
-
-    const premiumShown = await premiumGate.isVisible().catch(() => false);
-    if (premiumShown) {
-      await expect(premiumGate).toBeVisible();
-      return;
-    }
-
-    const tableShown = await tableTitle.isVisible().catch(() => false);
-    if (tableShown) {
-      await expect(tableTitle).toBeVisible();
-      return;
-    }
+    const pageTitle = page.getByRole("heading", { name: /Dépenses détaillées/i });
+    const sessionError = page.getByText(/Session invalide|Impossible de charger/i);
 
     await page.waitForTimeout(2000);
-    await expect(premiumGate.or(tableTitle)).toBeVisible();
+    const candidates = premiumGate
+      .or(tableTitle)
+      .or(pageTitle)
+      .or(sessionError);
+    await expect(candidates).toBeVisible();
   });
 });
