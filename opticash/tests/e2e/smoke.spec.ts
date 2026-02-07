@@ -31,9 +31,9 @@ test.describe("OptiCash E2E smoke", () => {
     ]);
 
     if (result === "success") {
-      await page.getByRole("link", { name: /voir mon plan/i }).click();
+      await page.getByRole("link", { name: /voir mon plan/i }).first().click();
       await expect(page).toHaveURL(/plan/);
-      await expect(page.getByText(/plan/i)).toBeVisible();
+      await expect(page.getByRole("heading", { name: /Ton plan OptiCash/i })).toBeVisible();
     } else {
       await expect(page.getByText(/Premium/i)).toBeVisible();
     }
@@ -59,14 +59,19 @@ test.describe("OptiCash E2E smoke", () => {
     const premiumGate = page.getByText(/Accès Premium requis/i);
     const tableTitle = page.getByText(/Tableau ligne par ligne/i);
 
-    const result = await Promise.race([
-      premiumGate.waitFor({ timeout: 15_000 }).then(() => "premium"),
-      tableTitle.waitFor({ timeout: 15_000 }).then(() => "table"),
-    ]);
-    if (result === "premium") {
+    const premiumShown = await premiumGate.isVisible().catch(() => false);
+    if (premiumShown) {
       await expect(premiumGate).toBeVisible();
-    } else {
-      await expect(tableTitle).toBeVisible();
+      return;
     }
+
+    const tableShown = await tableTitle.isVisible().catch(() => false);
+    if (tableShown) {
+      await expect(tableTitle).toBeVisible();
+      return;
+    }
+
+    await page.waitForTimeout(2000);
+    await expect(premiumGate.or(tableTitle)).toBeVisible();
   });
 });
