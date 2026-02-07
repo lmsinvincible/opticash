@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { routes } from "@/lib/config";
 import { formatCents } from "@/lib/money";
 import { planItems as demoPlanItems } from "@/lib/mock-data";
@@ -446,12 +447,21 @@ export default function PlanPage() {
     setOcrLoading(true);
     setOcrProgress(0);
     setOcrOverlay("running");
+    let simulated: ReturnType<typeof setInterval> | null = null;
     try {
       const { default: Tesseract } = await import("tesseract.js");
+      setOcrProgress(5);
+      simulated = setInterval(() => {
+        setOcrProgress((prev) => (prev >= 90 ? prev : prev + 4));
+      }, 400);
       const { data } = await Tesseract.recognize(taxFile, "fra", {
         logger: (info) => {
           if (info.status === "recognizing text" && info.progress) {
-            setOcrProgress(Math.round(info.progress * 100));
+            if (simulated) {
+              clearInterval(simulated);
+              simulated = null;
+            }
+            setOcrProgress(Math.max(5, Math.round(info.progress * 100)));
           }
         },
       });
@@ -470,6 +480,7 @@ export default function PlanPage() {
       toast.error("Échec OCR. Essaie un autre fichier.");
       setOcrOverlay("idle");
     } finally {
+      if (simulated) clearInterval(simulated);
       setOcrLoading(false);
     }
   };
@@ -1098,11 +1109,7 @@ export default function PlanPage() {
               compliant.
             </p>
             <div className="mt-4">
-              <progress
-                className="h-2 w-full overflow-hidden rounded-full"
-                value={ocrProgress}
-                max={100}
-              />
+              <Progress value={ocrProgress} />
             </div>
           </div>
         </div>

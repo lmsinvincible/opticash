@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { readExpensesCache } from "@/lib/expenses";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
 
 type ExpenseRow = {
   line: number;
@@ -343,12 +344,15 @@ export default function ExpenseLinePage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-            <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Rechercher dans l’historique..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                className="w-full rounded-md border py-2 pl-9 pr-3 text-sm"
+                placeholder="Rechercher dans l’historique..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
             <div className="text-sm text-muted-foreground">
               Total filtré :{" "}
               <span className="font-medium text-foreground">

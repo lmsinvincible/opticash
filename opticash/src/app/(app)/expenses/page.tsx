@@ -452,7 +452,10 @@ export default function ExpensesPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <div className="text-sm text-muted-foreground">
+            <div
+              className="text-sm text-muted-foreground"
+              title="Total des dépenses filtrées"
+            >
               Total dépensé :{" "}
               <span className="font-medium text-foreground">
                 {formatCents(Math.round(totalSpent * 100))}
