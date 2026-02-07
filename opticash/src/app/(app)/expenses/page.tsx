@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ export default function ExpensesPage() {
   const [analyzedCount, setAnalyzedCount] = useState(0);
   const [query, setQuery] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [overlayProgress, setOverlayProgress] = useState(0);
+  const [isPending, startTransition] = useTransition();
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
@@ -40,6 +42,20 @@ export default function ExpensesPage() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const lineParam = searchParams.get("line");
+  const overlayActive = loading || isPending;
+
+  useEffect(() => {
+    if (!overlayActive) {
+      setOverlayProgress(100);
+      const done = setTimeout(() => setOverlayProgress(0), 500);
+      return () => clearTimeout(done);
+    }
+    setOverlayProgress(0);
+    const interval = setInterval(() => {
+      setOverlayProgress((prev) => (prev >= 90 ? prev : prev + 2));
+    }, 180);
+    return () => clearInterval(interval);
+  }, [overlayActive]);
 
   useEffect(() => {
     let mounted = true;
@@ -427,6 +443,25 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
+      {overlayActive && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4">
+          <div className="pointer-events-auto w-full max-w-md rounded-xl bg-background p-6 text-center shadow-lg">
+            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+            <h3 className="text-lg font-semibold">Chargement des détails…</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Cela prend quelques secondes. Tu peux continuer à naviguer.
+            </p>
+            <div className="mt-4">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-emerald-500 transition-[width] duration-300"
+                  style={{ width: `${overlayProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold">Dépenses détaillées</h2>
@@ -450,7 +485,7 @@ export default function ExpensesPage() {
               className="w-full rounded-md border px-3 py-2 text-sm"
               placeholder="Rechercher un libellé, un lieu, une catégorie..."
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => startTransition(() => setQuery(event.target.value))}
             />
             <div
               className="text-sm text-muted-foreground"

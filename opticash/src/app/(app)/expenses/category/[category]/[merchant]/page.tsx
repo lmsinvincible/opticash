@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,21 @@ export default function ExpenseMerchantPage() {
   const categoryName = deslugify(categorySlug ?? "");
   const merchantName = deslugify(merchantSlug ?? "");
   const [query, setQuery] = useState("");
+  const [overlayProgress, setOverlayProgress] = useState(0);
+  const [isPending, startTransition] = useTransition();
   const items = useMemo(() => readExpensesCache() ?? [], []);
+  const overlayActive = isPending;
+
+  useEffect(() => {
+    if (!overlayActive) {
+      setOverlayProgress(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setOverlayProgress((prev) => (prev >= 90 ? prev : prev + 3));
+    }, 180);
+    return () => clearInterval(interval);
+  }, [overlayActive]);
 
   const filtered = useMemo(() => {
     const byCategory =
@@ -91,10 +105,25 @@ export default function ExpenseMerchantPage() {
             className="w-full rounded-md border px-3 py-2 text-sm"
             placeholder="Ex: frais carte, abonnement, paiement..."
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => startTransition(() => setQuery(event.target.value))}
           />
         </CardContent>
       </Card>
+
+      {overlayActive && (
+        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-black/10 px-4">
+          <div className="pointer-events-auto w-full max-w-sm rounded-xl bg-background p-4 text-center shadow-lg">
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+            <p className="text-sm font-medium">Filtrage en cours…</p>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-emerald-500 transition-[width] duration-300"
+                style={{ width: `${overlayProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

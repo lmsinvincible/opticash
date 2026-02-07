@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -57,11 +57,25 @@ export default function ExpenseLinePage() {
     next_steps: string[];
   }>(null);
   const [search, setSearch] = useState("");
+  const [overlayProgress, setOverlayProgress] = useState(0);
+  const [isPending, startTransition] = useTransition();
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const overlayActive = deepLoading || isPending;
+
+  useEffect(() => {
+    if (!overlayActive) {
+      setOverlayProgress(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setOverlayProgress((prev) => (prev >= 90 ? prev : prev + 3));
+    }, 200);
+    return () => clearInterval(interval);
+  }, [overlayActive]);
 
   const items = useMemo(() => (readExpensesCache() ?? []) as ExpenseRow[], []);
   const item = useMemo(() => items.find((row) => row.line === lineId), [items, lineId]);
@@ -264,6 +278,20 @@ export default function ExpenseLinePage() {
 
   return (
     <div className="space-y-6">
+      {overlayActive && (
+        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-black/10 px-4">
+          <div className="pointer-events-auto w-full max-w-sm rounded-xl bg-background p-4 text-center shadow-lg">
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+            <p className="text-sm font-medium">Chargement des détails…</p>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-emerald-500 transition-[width] duration-300"
+                style={{ width: `${overlayProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <nav className="text-xs text-muted-foreground">
         <Link className="hover:text-foreground" href="/">
           Accueil
@@ -351,8 +379,8 @@ export default function ExpenseLinePage() {
                 className="w-full rounded-md border py-2 pl-9 pr-3 text-sm"
                 placeholder="Rechercher dans l’historique..."
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+              onChange={(event) => startTransition(() => setSearch(event.target.value))}
+            />
             </div>
             <div className="text-sm text-muted-foreground">
               Total filtré :{" "}
