@@ -111,6 +111,27 @@ export default function ExpensesPage() {
     void fetchData();
   }, [isPremium, isAdmin]);
 
+  const filteredItems = useMemo(() => {
+    if (!categoryParam) return items;
+    if (categoryParam === "frais-bancaires") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("frais bancaires") ||
+          /frais|cotisation|tenue|commission|agios|package|carte|incident/i.test(item.label)
+      );
+    }
+    if (categoryParam === "abonnements") {
+      return items.filter(
+        (item) =>
+          (item.categorie || "").toLowerCase().includes("abonnements") ||
+          /netflix|spotify|deezer|apple music|amazon prime|canva|linkedin/i.test(item.label)
+      );
+    }
+    return items.filter(
+      (item) => (item.categorie || "Non classé") === categoryParam.replace(/-/g, " ")
+    );
+  }, [items, categoryParam]);
+
   const visibleItems = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
     if (!trimmed) return filteredItems;
@@ -264,27 +285,6 @@ export default function ExpensesPage() {
       setChatLoading(false);
     }
   };
-  const filteredItems = useMemo(() => {
-    if (!categoryParam) return items;
-    if (categoryParam === "frais-bancaires") {
-      return items.filter(
-        (item) =>
-          (item.categorie || "").toLowerCase().includes("frais bancaires") ||
-          /frais|cotisation|tenue|commission|agios|package|carte|incident/i.test(item.label)
-      );
-    }
-    if (categoryParam === "abonnements") {
-      return items.filter(
-        (item) =>
-          (item.categorie || "").toLowerCase().includes("abonnements") ||
-          /netflix|spotify|deezer|apple music|amazon prime|canva|linkedin/i.test(item.label)
-      );
-    }
-    return items.filter(
-      (item) => (item.categorie || "Non classé") === categoryParam.replace(/-/g, " ")
-    );
-  }, [items, categoryParam]);
-
   if (loading) {
     return (
       <div className="space-y-6">
