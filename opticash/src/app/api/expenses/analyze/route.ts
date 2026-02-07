@@ -64,6 +64,8 @@ const analyzeBatch = async (lines: ExpenseLine[]): Promise<AiDetail[]> => {
     )
     .join("\n");
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -94,9 +96,11 @@ ${promptLines}`,
         },
       ],
     }),
-  });
+    signal: controller.signal,
+  }).catch(() => null);
+  clearTimeout(timeout);
 
-  if (!response.ok) {
+  if (!response || !response.ok) {
     return lines.map((line) => ({
       line: line.line,
       categorie: "Non classé",

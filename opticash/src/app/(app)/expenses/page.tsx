@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
 import { formatCents } from "@/lib/money";
 import { routes } from "@/lib/config";
-import { groupByCategory, writeExpensesCache } from "@/lib/expenses";
+import { groupByCategory, readExpensesCache, writeExpensesCache } from "@/lib/expenses";
 import { toast } from "sonner";
 
 type ExpenseRow = {
@@ -32,6 +32,7 @@ export default function ExpensesPage() {
   const [query, setQuery] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [overlayProgress, setOverlayProgress] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
@@ -42,7 +43,7 @@ export default function ExpensesPage() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const lineParam = searchParams.get("line");
-  const overlayActive = loading || isPending;
+  const overlayActive = loading || refreshing || isPending;
 
   useEffect(() => {
     if (!overlayActive) {
@@ -93,7 +94,15 @@ export default function ExpensesPage() {
     const fetchData = async () => {
       if (!isPremium && !isAdmin) return;
       try {
-        setLoading(true);
+        const cached = readExpensesCache();
+        if (cached?.length) {
+          setItems(cached);
+          setAnalyzedCount(cached.length);
+          setLoading(false);
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
         setLoadingProgress(10);
         const session = await supabase.auth.getSession();
         setLoadingProgress(25);
@@ -103,12 +112,16 @@ export default function ExpensesPage() {
           return;
         }
         setLoadingProgress(45);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const response = await fetch("/api/expenses/analyze", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
         if (response.status === 402) {
           setError("Accès Premium requis.");
           return;
@@ -129,6 +142,7 @@ export default function ExpensesPage() {
         toast.error(message);
       } finally {
         setLoading(false);
+        setRefreshing(false);
         setTimeout(() => setLoadingProgress(0), 600);
       }
     };
