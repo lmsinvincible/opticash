@@ -7,18 +7,21 @@ import { cn } from "@/lib/utils";
 const Progress = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { value?: number }
->(({ className, value = 0, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("relative h-2 w-full overflow-hidden rounded-full bg-muted", className)}
-    {...props}
-  >
+>(({ className, value = 0, ...props }, ref) => {
+  const clamped = Math.min(100, Math.max(0, value));
+  return (
     <div
-      className="h-full w-full flex-1 bg-emerald-500 transition-all"
-      style={{ transform: `translateX(-${100 - Math.min(100, Math.max(0, value))}%)` }}
-    />
-  </div>
-));
+      ref={ref}
+      className={cn("relative h-2 w-full overflow-hidden rounded-full bg-muted", className)}
+      {...props}
+    >
+      <div
+        className="h-full bg-emerald-500 transition-[width] duration-300"
+        style={{ width: `${clamped}%` }}
+      />
+    </div>
+  );
+});
 Progress.displayName = "Progress";
 
 export { Progress };

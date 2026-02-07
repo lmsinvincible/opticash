@@ -78,9 +78,10 @@ export default function ExpenseLinePage() {
   const filteredHistory = useMemo(() => {
     const trimmed = search.trim().toLowerCase();
     if (!trimmed) return history;
-    return history.filter((row) =>
-      `${row.label} ${row.date}`.toLowerCase().includes(trimmed)
-    );
+    return history.filter((row) => {
+      const hay = `${row.label} ${row.categorie} ${row.lieu} ${row.type} ${row.date}`.toLowerCase();
+      return hay.includes(trimmed);
+    });
   }, [history, search]);
 
   const avgAmount = useMemo(() => {

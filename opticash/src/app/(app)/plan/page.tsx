@@ -450,10 +450,10 @@ export default function PlanPage() {
     let simulated: ReturnType<typeof setInterval> | null = null;
     try {
       const { default: Tesseract } = await import("tesseract.js");
-      setOcrProgress(5);
+      setOcrProgress(2);
       simulated = setInterval(() => {
-        setOcrProgress((prev) => (prev >= 90 ? prev : prev + 4));
-      }, 400);
+        setOcrProgress((prev) => (prev >= 95 ? prev : prev + 3));
+      }, 350);
       const { data } = await Tesseract.recognize(taxFile, "fra", {
         logger: (info) => {
           if (info.status === "recognizing text" && info.progress) {
