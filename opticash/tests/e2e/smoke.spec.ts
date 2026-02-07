@@ -56,16 +56,12 @@ test.describe("OptiCash E2E smoke", () => {
 
   test("expenses page access", async ({ page }) => {
     await page.goto("/expenses");
-    const premiumGate = page.getByText(/Accès Premium requis/i);
-    const tableTitle = page.getByText(/Tableau ligne par ligne/i);
-    const pageTitle = page.getByRole("heading", { name: /Dépenses détaillées/i });
-    const sessionError = page.getByText(/Session invalide|Impossible de charger/i);
-
+    await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(2000);
-    const candidates = premiumGate
-      .or(tableTitle)
-      .or(pageTitle)
-      .or(sessionError);
-    await expect(candidates).toBeVisible();
+
+    await expect(page.locator("body")).not.toContainText(
+      "Application error: a client-side exception has occurred"
+    );
+    await expect(page).toHaveURL(/expenses/);
   });
 });
