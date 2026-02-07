@@ -93,6 +93,17 @@ export default function ExpensesPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!isPremium && !isAdmin) return;
+      if (lineParam) {
+        const cached = readExpensesCache();
+        if (cached?.length) {
+          setItems(cached);
+          setAnalyzedCount(cached.length);
+        } else {
+          setError("Aucune dépense en cache. Lance d’abord une analyse.");
+        }
+        setLoading(false);
+        return;
+      }
       let hadCache = false;
       try {
         const cached = readExpensesCache();
