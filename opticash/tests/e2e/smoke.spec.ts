@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "path";
 
 const hasCreds = Boolean(process.env.E2E_EMAIL && process.env.E2E_PASSWORD);
+const hasStripe = Boolean(process.env.E2E_STRIPE);
 
 test.describe("OptiCash E2E smoke", () => {
   test.skip(!hasCreds, "E2E_EMAIL / E2E_PASSWORD are required");
@@ -54,6 +55,14 @@ test.describe("OptiCash E2E smoke", () => {
     await expect(page.getByText(/Fuites détectées|Aucune analyse/i)).toBeVisible();
   });
 
+  test("impots boost modal opens", async ({ page }) => {
+    await page.goto("/plan");
+    await page.getByRole("button", { name: /Remplir manuellement/i }).click();
+    await expect(page.getByRole("heading", { name: /Impôts Boost/i })).toBeVisible();
+    await expect(page.getByText(/Salaire mensuel moyen/i)).toBeVisible();
+    await page.getByRole("button", { name: /Passer/i }).click();
+  });
+
   test("expenses page access", async ({ page }) => {
     await page.goto("/expenses");
     await page.waitForLoadState("domcontentloaded");
@@ -63,5 +72,12 @@ test.describe("OptiCash E2E smoke", () => {
       "Application error: a client-side exception has occurred"
     );
     await expect(page).toHaveURL(/expenses/);
+  });
+
+  test.skip(!hasStripe, "E2E_STRIPE=1 required for checkout test");
+  test("stripe checkout opens", async ({ page }) => {
+    await page.goto("/upgrade");
+    await page.getByRole("button", { name: /Passer premium/i }).click();
+    await page.waitForURL(/stripe\.com|checkout\.stripe\.com/, { timeout: 20_000 });
   });
 });

@@ -13,6 +13,9 @@
 # testing
 /coverage
 /tests/e2e/.auth.json
+/test-results
+/playwright
+opticash@0.1.0
 
 # next.js
 /.next/
