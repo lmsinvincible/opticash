@@ -30,11 +30,13 @@ export default function ExpensesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [analyzedCount, setAnalyzedCount] = useState(0);
   const [query, setQuery] = useState("");
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const lineParam = searchParams.get("line");
@@ -76,12 +78,15 @@ export default function ExpensesPage() {
       if (!isPremium && !isAdmin) return;
       try {
         setLoading(true);
+        setLoadingProgress(10);
         const session = await supabase.auth.getSession();
+        setLoadingProgress(25);
         const token = session.data.session?.access_token;
         if (!token) {
           setError("Session invalide. Merci de vous reconnecter.");
           return;
         }
+        setLoadingProgress(45);
         const response = await fetch("/api/expenses/analyze", {
           method: "POST",
           headers: {
@@ -92,6 +97,7 @@ export default function ExpensesPage() {
           setError("Accès Premium requis.");
           return;
         }
+        setLoadingProgress(70);
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload.error ?? "Impossible de charger les dépenses.");
@@ -100,12 +106,14 @@ export default function ExpensesPage() {
         setItems(payload.items ?? []);
         setAnalyzedCount(payload.count ?? (payload.items?.length ?? 0));
         writeExpensesCache(payload.items ?? []);
+        setLoadingProgress(100);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Erreur inconnue";
         setError(message);
         toast.error(message);
       } finally {
         setLoading(false);
+        setTimeout(() => setLoadingProgress(0), 600);
       }
     };
     void fetchData();
@@ -251,6 +259,89 @@ export default function ExpensesPage() {
     }
   };
 
+  const handleExportPdfWithAi = async () => {
+    try {
+      setPdfLoading(true);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        toast.error("Session invalide. Merci de vous reconnecter.");
+        return;
+      }
+      const response = await fetch("/api/ai/expenses-summary", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ summary }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Impossible de générer le résumé IA.");
+      }
+      const ai = (await response.json()) as {
+        headline: string;
+        summary: string;
+        highlights: string[];
+        alerts: string[];
+        global_advice?: string;
+      };
+
+      const { PDFDocument, StandardFonts } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([595, 842]);
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const { height } = page.getSize();
+      let y = height - 50;
+
+      const draw = (text: string, size = 12) => {
+        page.drawText(text, { x: 40, y, size, font });
+        y -= size + 6;
+      };
+
+      draw("OptiCash — Résumé intelligent des dépenses", 16);
+      draw(ai.headline ?? "Résumé global", 13);
+      draw(ai.summary ?? "", 12);
+      y -= 6;
+      draw("Points clés :", 13);
+      ai.highlights?.forEach((item) => draw(`- ${item}`, 11));
+      y -= 4;
+      draw("Alertes / conseils :", 13);
+      ai.alerts?.forEach((item) => draw(`- ${item}`, 11));
+      if (ai.global_advice) {
+        y -= 4;
+        draw(`Avis global : ${ai.global_advice}`, 11);
+      }
+      y -= 6;
+      draw("Exemples de dépenses (50 max) :", 13);
+      visibleItems.slice(0, 50).forEach((item) => {
+        if (y < 60) return;
+        draw(
+          `${item.date} | ${item.label} | ${formatCents(Math.round(item.amount * 100))} | ${item.categorie}`,
+          10
+        );
+      });
+      y -= 6;
+      draw(`Total dépensé : ${formatCents(Math.round(summary.totalSpent * 100))}`, 12);
+      draw(`Filtre : ${summary.query ? `"${summary.query}"` : "aucun"}`, 11);
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "opticash-resume-ia.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur PDF IA";
+      toast.error(message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const handleChatSend = async () => {
     if (!chatInput.trim()) return;
     const nextMessages = [...chatMessages, { role: "user", content: chatInput.trim() }];
@@ -292,7 +383,10 @@ export default function ExpensesPage() {
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Analyse en cours…</h3>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-2 w-2/3 animate-pulse rounded-full bg-emerald-500" />
+              <div
+                className="h-2 rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.max(10, loadingProgress)}%` }}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               Nous analysons tes dépenses détaillées. Merci de patienter quelques secondes.
@@ -369,6 +463,9 @@ export default function ExpensesPage() {
             <Button size="sm" variant="outline" onClick={handleExportPdf}>
               Exporter le résumé PDF
             </Button>
+            <Button size="sm" onClick={handleExportPdfWithAi} disabled={pdfLoading}>
+              {pdfLoading ? "Génération..." : "Résumé PDF IA"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -399,7 +496,7 @@ export default function ExpensesPage() {
         </CardContent>
       </Card>
 
-      {query.trim().length > 0 && (
+      {(query.trim().length > 0 || categoryParam) && (
         <Card>
         <CardHeader>
           <CardTitle>

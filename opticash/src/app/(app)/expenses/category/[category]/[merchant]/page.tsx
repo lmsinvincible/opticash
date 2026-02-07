@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,27 +8,69 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCents } from "@/lib/money";
 import { deslugify, readExpensesCache } from "@/lib/expenses";
 
+const subscriptionMatchers = [
+  /netflix/i,
+  /spotify/i,
+  /deezer/i,
+  /apple music/i,
+  /amazon prime/i,
+  /canva/i,
+  /linkedin/i,
+];
+
 export default function ExpenseMerchantPage() {
   const params = useParams();
   const categorySlug = Array.isArray(params.category) ? params.category[0] : params.category;
   const merchantSlug = Array.isArray(params.merchant) ? params.merchant[0] : params.merchant;
   const categoryName = deslugify(categorySlug ?? "");
   const merchantName = deslugify(merchantSlug ?? "");
+  const [query, setQuery] = useState("");
   const items = useMemo(() => readExpensesCache() ?? [], []);
 
   const filtered = useMemo(() => {
-    return items.filter(
-      (item) =>
-        (item.categorie || "Non classé") === categoryName && (item.label || "") === merchantName
+    const byCategory =
+      categorySlug === "frais-bancaires"
+        ? items.filter(
+            (item) =>
+              (item.categorie || "").toLowerCase().includes("frais bancaires") ||
+              /frais|cotisation|tenue|commission|agios|package|carte|incident/i.test(item.label)
+          )
+        : categorySlug === "abonnements"
+          ? items.filter(
+              (item) =>
+                (item.categorie || "").toLowerCase().includes("abonnements") ||
+                subscriptionMatchers.some((rx) => rx.test(item.label))
+            )
+          : items.filter((item) => (item.categorie || "Non classé") === categoryName);
+
+    const merchantLower = merchantName.toLowerCase();
+    return byCategory.filter((item) =>
+      (item.label || "").toLowerCase().includes(merchantLower)
     );
-  }, [categoryName, items, merchantName]);
+  }, [categoryName, categorySlug, items, merchantName]);
+
+  const searched = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return filtered;
+    return filtered.filter((item) => {
+      const hay = `${item.label} ${item.type} ${item.lieu} ${item.date}`.toLowerCase();
+      return hay.includes(trimmed);
+    });
+  }, [filtered, query]);
+
+  const totalSpent = useMemo(
+    () => searched.reduce((acc, item) => acc + (item.amount < 0 ? -item.amount : 0), 0),
+    [searched]
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold">{merchantName}</h2>
-          <p className="text-sm text-muted-foreground">{categoryName}</p>
+          <p className="text-sm text-muted-foreground">
+            {categoryName} · Total {formatCents(Math.round(totalSpent * 100))}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
@@ -39,6 +81,20 @@ export default function ExpenseMerchantPage() {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Rechercher dans ce commerçant</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Ex: frais carte, abonnement, paiement..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -54,7 +110,7 @@ export default function ExpenseMerchantPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
+              {searched.map((item) => (
                 <tr key={`${item.line}-${item.date}`} className="border-t">
                   <td className="py-3 pr-4">{item.date}</td>
                   <td className="py-3 pr-4">{formatCents(Math.round(item.amount * 100))}</td>
@@ -68,7 +124,7 @@ export default function ExpenseMerchantPage() {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && (
+          {searched.length === 0 && (
             <div className="py-6 text-center text-sm text-muted-foreground">
               Aucune dépense trouvée.
             </div>

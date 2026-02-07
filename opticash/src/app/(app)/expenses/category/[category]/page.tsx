@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export default function ExpenseCategoryPage() {
   const params = useParams();
   const slug = Array.isArray(params.category) ? params.category[0] : params.category;
   const categoryName = deslugify(slug ?? "");
+  const [query, setQuery] = useState("");
   const items = useMemo(() => readExpensesCache() ?? [], []);
 
   const filtered = useMemo(() => {
@@ -41,7 +42,20 @@ export default function ExpenseCategoryPage() {
     }
     return items.filter((item) => (item.categorie || "Non classé") === categoryName);
   }, [categoryName, items, slug]);
-  const merchants = useMemo(() => groupByMerchant(filtered), [filtered]);
+  const searched = useMemo(() => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return filtered;
+    return filtered.filter((item) => {
+      const hay = `${item.label} ${item.categorie} ${item.lieu} ${item.type} ${item.date}`.toLowerCase();
+      return hay.includes(trimmed);
+    });
+  }, [filtered, query]);
+
+  const merchants = useMemo(() => groupByMerchant(searched), [searched]);
+  const totalSpent = useMemo(
+    () => searched.reduce((acc, item) => acc + (item.amount < 0 ? -item.amount : 0), 0),
+    [searched]
+  );
 
   return (
     <div className="space-y-6">
@@ -54,12 +68,28 @@ export default function ExpenseCategoryPage() {
                 ? "Abonnements"
                 : categoryName}
           </h2>
-          <p className="text-sm text-muted-foreground">{filtered.length} lignes</p>
+          <p className="text-sm text-muted-foreground">
+            {searched.length} lignes · Total {formatCents(Math.round(totalSpent * 100))}
+          </p>
         </div>
         <Button variant="outline" asChild>
           <Link href="/expenses">Retour aux dépenses</Link>
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Rechercher dans cette catégorie</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Ex: Carrefour, boulangerie, frais carte..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
