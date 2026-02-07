@@ -22,7 +22,7 @@ test.describe("OptiCash E2E smoke", () => {
 
     await page.getByRole("button", { name: /continuer/i }).click();
 
-    const success = page.getByText(/Import réussi/i);
+    const success = page.getByText("Import réussi ✅ Scan créé.").first();
     const limit = page.getByText(/Limite gratuite/i);
 
     const result = await Promise.race([
@@ -42,7 +42,7 @@ test.describe("OptiCash E2E smoke", () => {
   test("plan displays actions", async ({ page }) => {
     await page.goto("/plan");
     const actionButton = page.getByRole("button", { name: /marquer comme fait/i });
-    const planTitle = page.getByText(/plan/i);
+    const planTitle = page.getByRole("heading", { name: /Ton plan OptiCash/i });
     await expect(planTitle).toBeVisible();
     if (await actionButton.count()) {
       await expect(actionButton.first()).toBeVisible();
@@ -59,7 +59,11 @@ test.describe("OptiCash E2E smoke", () => {
     const premiumGate = page.getByText(/Accès Premium requis/i);
     const tableTitle = page.getByText(/Tableau ligne par ligne/i);
 
-    if (await premiumGate.count()) {
+    const result = await Promise.race([
+      premiumGate.waitFor({ timeout: 15_000 }).then(() => "premium"),
+      tableTitle.waitFor({ timeout: 15_000 }).then(() => "table"),
+    ]);
+    if (result === "premium") {
       await expect(premiumGate).toBeVisible();
     } else {
       await expect(tableTitle).toBeVisible();
