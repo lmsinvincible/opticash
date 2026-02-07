@@ -288,7 +288,17 @@ export default function ExpensesPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Card className="h-28 animate-pulse" />
+        <Card className="p-6">
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Analyse en cours…</h3>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-2 w-2/3 animate-pulse rounded-full bg-emerald-500" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Nous analysons tes dépenses détaillées. Merci de patienter quelques secondes.
+            </p>
+          </div>
+        </Card>
         <Card className="h-64 animate-pulse" />
       </div>
     );

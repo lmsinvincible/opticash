@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCents } from "@/lib/money";
 import { readExpensesCache } from "@/lib/expenses";
+import { supabase } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 type ExpenseRow = {
   line: number;
@@ -53,6 +55,12 @@ export default function ExpenseLinePage() {
     suggestions: string[];
     next_steps: string[];
   }>(null);
+  const [search, setSearch] = useState("");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
+  const [chatLoading, setChatLoading] = useState(false);
 
   const items = useMemo(() => (readExpensesCache() ?? []) as ExpenseRow[], []);
   const item = useMemo(() => items.find((row) => row.line === lineId), [items, lineId]);
@@ -66,11 +74,25 @@ export default function ExpenseLinePage() {
       .slice(0, 12);
   }, [items, item, normalized]);
 
+  const filteredHistory = useMemo(() => {
+    const trimmed = search.trim().toLowerCase();
+    if (!trimmed) return history;
+    return history.filter((row) =>
+      `${row.label} ${row.date}`.toLowerCase().includes(trimmed)
+    );
+  }, [history, search]);
+
   const avgAmount = useMemo(() => {
-    if (history.length === 0) return 0;
-    const sum = history.reduce((acc, row) => acc + row.amount, 0);
-    return sum / history.length;
-  }, [history]);
+    if (filteredHistory.length === 0) return 0;
+    const sum = filteredHistory.reduce((acc, row) => acc + row.amount, 0);
+    return sum / filteredHistory.length;
+  }, [filteredHistory]);
+
+  const totalFiltered = useMemo(
+    () =>
+      filteredHistory.reduce((acc, row) => acc + (row.amount < 0 ? -row.amount : 0), 0),
+    [filteredHistory]
+  );
 
   const confidence = item?.lieu ? 92 : 85;
   const totalLines = items.length;
@@ -152,6 +174,89 @@ export default function ExpenseLinePage() {
       });
     } finally {
       setDeepLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const { PDFDocument, StandardFonts } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([595, 842]);
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const { height } = page.getSize();
+      let y = height - 50;
+
+      const draw = (text: string, size = 12) => {
+        page.drawText(text, { x: 40, y, size, font });
+        y -= size + 6;
+      };
+
+      draw(`OptiCash — Détail transaction ligne #${item.line}`, 16);
+      draw(`Date : ${item.date}`);
+      draw(`Libellé : ${item.label}`);
+      draw(`Catégorie : ${item.categorie}`);
+      draw(`Total filtré : ${formatCents(Math.round(totalFiltered * 100))}`);
+      y -= 8;
+      draw("Historique filtré :", 13);
+      filteredHistory.forEach((row) => {
+        if (y < 60) return;
+        draw(`${row.date} | ${row.label} | ${formatCents(Math.round(row.amount * 100))}`, 10);
+      });
+
+      const bytes = await pdfDoc.save();
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "opticash-transaction.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur PDF";
+      toast.error(message);
+    }
+  };
+
+  const handleChatSend = async () => {
+    if (!chatInput.trim()) return;
+    const nextMessages = [...chatMessages, { role: "user", content: chatInput.trim() }];
+    setChatMessages(nextMessages);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        toast.error("Session invalide. Merci de vous reconnecter.");
+        return;
+      }
+      const summary = {
+        line: item.line,
+        date: item.date,
+        label: item.label,
+        category: item.categorie,
+        totalFiltered,
+        count: filteredHistory.length,
+      };
+      const response = await fetch("/api/ai/expenses-chat", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: nextMessages, summary }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Impossible de contacter l’IA.");
+      }
+      const payload = (await response.json()) as { reply: string };
+      setChatMessages((prev) => [...prev, { role: "assistant", content: payload.reply }]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur IA";
+      toast.error(message);
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -237,12 +342,26 @@ export default function ExpenseLinePage() {
           <CardTitle>Historique des mêmes paiements</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          {history.length === 0 ? (
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Rechercher dans l’historique..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="text-sm text-muted-foreground">
+              Total filtré :{" "}
+              <span className="font-medium text-foreground">
+                {formatCents(Math.round(totalFiltered * 100))}
+              </span>
+            </div>
+          </div>
+          {filteredHistory.length === 0 ? (
             <p>Aucun historique disponible.</p>
           ) : (
             <>
               <div className="space-y-1">
-                {history.map((row) => (
+                {filteredHistory.map((row) => (
                   <div key={`${row.line}-${row.date}`} className="flex justify-between">
                     <span>
                       {row.date} · {row.label}
@@ -277,6 +396,14 @@ export default function ExpenseLinePage() {
           <Button size="sm" onClick={handleDeepAnalysis} disabled={deepLoading}>
             {deepLoading ? "Analyse en cours..." : "Lancer l’analyse approfondie"}
           </Button>
+          {deepLoading && (
+            <div className="space-y-2">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-2 w-1/2 animate-pulse rounded-full bg-emerald-500" />
+              </div>
+              <p>Analyse en cours…</p>
+            </div>
+          )}
           {deepResult && (
             <div className="space-y-3">
               <p className="text-foreground">{deepResult.analysis}</p>
@@ -310,9 +437,51 @@ export default function ExpenseLinePage() {
           <CardTitle>Justificatif CSV</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button asChild>
-            <Link href={`/expenses?line=${item.line}`}>Voir la ligne originale</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href={`/expenses?line=${item.line}`}>Voir la ligne originale</Link>
+            </Button>
+            <Button variant="outline" onClick={handleExportPdf}>
+              Exporter en PDF
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assistant dépenses</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {chatMessages.length === 0 ? (
+              <p>Pose une question sur cette dépense, je t’aide à résumer.</p>
+            ) : (
+              chatMessages.map((msg, index) => (
+                <div
+                  key={`${msg.role}-${index}`}
+                  className={
+                    msg.role === "user"
+                      ? "rounded-md bg-muted/40 p-2 text-foreground"
+                      : "rounded-md bg-emerald-50/60 p-2 text-emerald-900"
+                  }
+                >
+                  {msg.content}
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              className="flex-1 rounded-md border px-3 py-2 text-sm"
+              placeholder="Ex: Résume mes dépenses Carrefour ce mois-ci"
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+            />
+            <Button size="sm" onClick={handleChatSend} disabled={chatLoading}>
+              {chatLoading ? "Analyse..." : "Envoyer"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
