@@ -93,6 +93,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!isPremium && !isAdmin) return;
+      let hadCache = false;
       try {
         const cached = readExpensesCache();
         if (cached?.length) {
@@ -100,6 +101,7 @@ export default function ExpensesPage() {
           setAnalyzedCount(cached.length);
           setLoading(false);
           setRefreshing(true);
+          hadCache = true;
         } else {
           setLoading(true);
         }
@@ -113,7 +115,7 @@ export default function ExpensesPage() {
         }
         setLoadingProgress(45);
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const timeout = setTimeout(() => controller.abort(), hadCache ? 45000 : 15000);
         const response = await fetch("/api/expenses/analyze", {
           method: "POST",
           headers: {
@@ -137,6 +139,16 @@ export default function ExpensesPage() {
         writeExpensesCache(payload.items ?? []);
         setLoadingProgress(100);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          if (!hadCache) {
+            const message = "Chargement trop long. Réessaie dans quelques secondes.";
+            setError(message);
+            toast.error(message);
+          } else {
+            toast.warning("Analyse en cours. On affiche les dernières données disponibles.");
+          }
+          return;
+        }
         const message = err instanceof Error ? err.message : "Erreur inconnue";
         setError(message);
         toast.error(message);
