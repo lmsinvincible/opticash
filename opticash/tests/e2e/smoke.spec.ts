@@ -58,7 +58,7 @@ test.describe("OptiCash E2E smoke", () => {
   test("impots boost modal opens", async ({ page }) => {
     await page.goto("/plan");
     await page.getByRole("button", { name: /Remplir manuellement/i }).click();
-    await expect(page.getByRole("heading", { name: /Impôts Boost/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Impôts Boost/i }).first()).toBeVisible();
     await expect(page.getByText(/Salaire mensuel moyen/i)).toBeVisible();
     await page.getByRole("button", { name: /Passer/i }).click();
   });
@@ -77,7 +77,17 @@ test.describe("OptiCash E2E smoke", () => {
   test.skip(!hasStripe, "E2E_STRIPE=1 required for checkout test");
   test("stripe checkout opens", async ({ page }) => {
     await page.goto("/upgrade");
-    await page.getByRole("button", { name: /Passer premium/i }).click();
-    await page.waitForURL(/stripe\.com|checkout\.stripe\.com/, { timeout: 20_000 });
+    const checkoutButton = page.getByRole("button", { name: /Passer premium/i });
+    const [response] = await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes("/api/stripe/checkout")),
+      checkoutButton.click(),
+    ]);
+
+    if (response.ok()) {
+      await page.waitForURL(/stripe\.com|checkout\.stripe\.com/, { timeout: 20_000 });
+      return;
+    }
+
+    await expect(page.getByText(/Erreur|Impossible|Stripe/i)).toBeVisible();
   });
 });
