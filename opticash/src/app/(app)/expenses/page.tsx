@@ -371,7 +371,7 @@ export default function ExpensesPage() {
           {categories.map((category) => (
             <Link
               key={category.slug}
-              href={`/expenses?category=${category.slug}`}
+              href={`/expenses/category/${category.slug}`}
               className="rounded-lg border px-4 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/50"
             >
               <div className="flex items-center justify-between">
@@ -389,7 +389,8 @@ export default function ExpensesPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      {query.trim().length > 0 && (
+        <Card>
         <CardHeader>
           <CardTitle>
             Tableau ligne par ligne
@@ -457,7 +458,8 @@ export default function ExpensesPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
