@@ -16,6 +16,7 @@
 /test-results
 /playwright
 opticash@0.1.0
+/playwright-report
 
 # next.js
 /.next/

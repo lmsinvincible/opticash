@@ -47,6 +47,12 @@ export default function ExpenseLinePage() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [comment, setComment] = useState("");
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepResult, setDeepResult] = useState<null | {
+    analysis: string;
+    suggestions: string[];
+    next_steps: string[];
+  }>(null);
 
   const items = useMemo(() => (readExpensesCache() ?? []) as ExpenseRow[], []);
   const item = useMemo(() => items.find((row) => row.line === lineId), [items, lineId]);
@@ -112,6 +118,41 @@ export default function ExpenseLinePage() {
     existing.push(payload);
     localStorage.setItem("opticash:expense-feedback", JSON.stringify(existing));
     setFeedbackSent(true);
+  };
+
+  const handleDeepAnalysis = async () => {
+    if (!item) return;
+    setDeepLoading(true);
+    try {
+      const response = await fetch("/api/ai/expense-detail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item,
+          history,
+          avgAmount,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Impossible d’analyser cette ligne.");
+      }
+      const payload = (await response.json()) as {
+        analysis: string;
+        suggestions: string[];
+        next_steps: string[];
+      };
+      setDeepResult(payload);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur IA";
+      setDeepResult({
+        analysis: message,
+        suggestions: [],
+        next_steps: [],
+      });
+    } finally {
+      setDeepLoading(false);
+    }
   };
 
   return (
@@ -224,6 +265,43 @@ export default function ExpenseLinePage() {
         </CardHeader>
         <CardContent className="rounded-lg bg-emerald-50/60 p-4 text-sm text-emerald-900">
           <p>{opportunity}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Analyse approfondie</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>Besoin d’un niveau de détail supplémentaire ?</p>
+          <Button size="sm" onClick={handleDeepAnalysis} disabled={deepLoading}>
+            {deepLoading ? "Analyse en cours..." : "Lancer l’analyse approfondie"}
+          </Button>
+          {deepResult && (
+            <div className="space-y-3">
+              <p className="text-foreground">{deepResult.analysis}</p>
+              {deepResult.suggestions.length > 0 && (
+                <div>
+                  <p className="font-medium text-foreground">Suggestions</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {deepResult.suggestions.map((item, index) => (
+                      <li key={`suggestion-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {deepResult.next_steps.length > 0 && (
+                <div>
+                  <p className="font-medium text-foreground">Prochaines étapes</p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5">
+                    {deepResult.next_steps.map((step, index) => (
+                      <li key={`next-${index}`}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
