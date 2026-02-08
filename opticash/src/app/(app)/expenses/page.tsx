@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase/client";
 import { formatCents } from "@/lib/money";
 import { routes } from "@/lib/config";
 import { groupByCategory, readExpensesCache, writeExpensesCache } from "@/lib/expenses";
+import { ExpensesChat } from "@/components/expenses/expenses-chat";
 import { toast } from "sonner";
 
 type ExpenseRow = {
@@ -34,11 +35,6 @@ export default function ExpensesPage() {
   const [overlayProgress, setOverlayProgress] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<
-    { role: "user" | "assistant"; content: string }[]
-  >([]);
-  const [chatLoading, setChatLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
@@ -395,40 +391,6 @@ export default function ExpensesPage() {
     }
   };
 
-  const handleChatSend = async () => {
-    if (!chatInput.trim()) return;
-    const nextMessages = [...chatMessages, { role: "user", content: chatInput.trim() }];
-    setChatMessages(nextMessages);
-    setChatInput("");
-    setChatLoading(true);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) {
-        toast.error("Session invalide. Merci de vous reconnecter.");
-        return;
-      }
-      const response = await fetch("/api/ai/expenses-chat", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages: nextMessages, summary }),
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error ?? "Impossible de contacter l’IA.");
-      }
-      const payload = (await response.json()) as { reply: string };
-      setChatMessages((prev) => [...prev, { role: "assistant", content: payload.reply }]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erreur IA";
-      toast.error(message);
-    } finally {
-      setChatLoading(false);
-    }
-  };
   if (loading) {
     return (
       <div className="space-y-6">
@@ -643,42 +605,7 @@ export default function ExpensesPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Assistant dépenses</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2 text-sm text-muted-foreground">
-            {chatMessages.length === 0 ? (
-              <p>Pose une question sur tes dépenses filtrées, je t’aide à résumer.</p>
-            ) : (
-              chatMessages.map((msg, index) => (
-                <div
-                  key={`${msg.role}-${index}`}
-                  className={
-                    msg.role === "user"
-                      ? "rounded-md bg-muted/40 p-2 text-foreground"
-                      : "rounded-md bg-emerald-50/60 p-2 text-emerald-900"
-                  }
-                >
-                  {msg.content}
-                </div>
-              ))
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <input
-              className="flex-1 rounded-md border px-3 py-2 text-sm"
-              placeholder="Ex: Résume mes dépenses Carrefour ce mois-ci"
-              value={chatInput}
-              onChange={(event) => setChatInput(event.target.value)}
-            />
-            <Button size="sm" onClick={handleChatSend} disabled={chatLoading}>
-              {chatLoading ? "Analyse..." : "Envoyer"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <ExpensesChat summary={summary} isPremium={isPremium || isAdmin} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCents } from "@/lib/money";
 import { deslugify, groupByMerchant, readExpensesCache } from "@/lib/expenses";
+import { ExpensesChat } from "@/components/expenses/expenses-chat";
 
 const subscriptionMatchers = [
   /netflix/i,
@@ -69,6 +70,19 @@ export default function ExpenseCategoryPage() {
   const totalSpent = useMemo(
     () => searched.reduce((acc, item) => acc + (item.amount < 0 ? -item.amount : 0), 0),
     [searched]
+  );
+  const summary = useMemo(
+    () => ({
+      count: searched.length,
+      totalSpent,
+      category: categoryName,
+      query,
+      topMerchants: merchants.slice(0, 5).map((merchant) => ({
+        name: merchant.merchant,
+        total: merchant.total,
+      })),
+    }),
+    [searched.length, totalSpent, categoryName, query, merchants]
   );
 
   return (
@@ -145,6 +159,8 @@ export default function ExpenseCategoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <ExpensesChat summary={summary} />
     </div>
   );
 }

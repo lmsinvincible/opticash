@@ -11,6 +11,7 @@ import { readExpensesCache } from "@/lib/expenses";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
+import { ExpensesChat } from "@/components/expenses/expenses-chat";
 
 type ExpenseRow = {
   line: number;
@@ -108,6 +109,17 @@ export default function ExpenseLinePage() {
     () =>
       filteredHistory.reduce((acc, row) => acc + (row.amount < 0 ? -row.amount : 0), 0),
     [filteredHistory]
+  );
+  const summary = useMemo(
+    () => ({
+      line: item?.line,
+      label: item?.label,
+      category: item?.categorie,
+      totalFiltered,
+      count: filteredHistory.length,
+      query: search,
+    }),
+    [item?.line, item?.label, item?.categorie, totalFiltered, filteredHistory.length, search]
   );
 
   const confidence = item?.lieu ? 92 : 85;
@@ -547,6 +559,8 @@ export default function ExpenseLinePage() {
           </Button>
         </CardContent>
       </Card>
+
+      <ExpensesChat summary={summary} />
     </div>
   );
 }
