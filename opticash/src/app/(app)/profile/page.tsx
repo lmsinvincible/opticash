@@ -17,12 +17,15 @@ type ProfileForm = {
   children_count: number;
   postal_code: string;
   phone: string;
+  city: string;
+  has_disability: boolean;
   profession: string;
   monthly_income_eur: number | "";
   commute_km_year: number | "";
   has_per: boolean;
   has_assurance_vie: boolean;
   has_pea: boolean;
+  avatar_url: string | null;
   consent_rgpd: boolean;
   is_premium: boolean;
   premium_until: string | null;
@@ -37,12 +40,15 @@ const emptyForm: ProfileForm = {
   children_count: 0,
   postal_code: "",
   phone: "",
+  city: "",
+  has_disability: false,
   profession: "",
   monthly_income_eur: "",
   commute_km_year: "",
   has_per: false,
   has_assurance_vie: false,
   has_pea: false,
+  avatar_url: null,
   consent_rgpd: false,
   is_premium: false,
   premium_until: null,
@@ -65,8 +71,8 @@ export default function ProfilePage() {
         .from("profiles")
         .select(
           `first_name,last_name,birth_date,gender,marital_status,children_count,postal_code,
-           phone,profession,monthly_income_eur,commute_km_year,has_per,has_assurance_vie,has_pea,
-           consent_rgpd,is_premium,premium_until`
+           phone,city,has_disability,profession,monthly_income_eur,commute_km_year,
+           has_per,has_assurance_vie,has_pea,avatar_url,consent_rgpd,is_premium,premium_until`
         )
         .eq("id", userId)
         .maybeSingle();
@@ -99,6 +105,8 @@ export default function ProfilePage() {
         .from("profiles")
         .update({
           ...profile,
+          city: profile.city,
+          has_disability: profile.has_disability,
           monthly_income_eur:
             profile.monthly_income_eur === "" ? null : Number(profile.monthly_income_eur),
           commute_km_year:
@@ -184,6 +192,33 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    try {
+      const session = await supabase.auth.getSession();
+      const userId = session.data.session?.user.id;
+      if (!userId) {
+        toast.error("Session invalide.");
+        return;
+      }
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userId}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) {
+        throw uploadError;
+      }
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const avatarUrl = data.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
+      setProfile((prev) => ({ ...prev, avatar_url: avatarUrl }));
+      toast.success("Photo de profil mise à jour.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur upload avatar.";
+      toast.error(message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="rounded-xl border bg-background p-6 text-sm text-muted-foreground">
@@ -196,7 +231,39 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Mon profil</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Avatar"
+                  className="h-20 w-20 rounded-full border border-emerald-200 object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-xl font-semibold text-emerald-700">
+                  {profile.first_name ? profile.first_name.charAt(0).toUpperCase() : "O"}
+                </div>
+              )}
+              <div>
+                <CardTitle className="text-2xl">Mon profil</CardTitle>
+                <div className="text-xs text-muted-foreground">Photo de profil</div>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="mt-2 max-w-xs"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleAvatarUpload(file);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 text-white hover:bg-emerald-600">
+              {saving ? "Sauvegarde..." : "Enregistrer"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -277,6 +344,15 @@ export default function ProfilePage() {
               value={profile.postal_code ?? ""}
               onChange={(event) =>
                 setProfile((prev) => ({ ...prev, postal_code: event.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Ville</Label>
+            <Input
+              value={profile.city ?? ""}
+              onChange={(event) =>
+                setProfile((prev) => ({ ...prev, city: event.target.value }))
               }
             />
           </div>
@@ -364,6 +440,19 @@ export default function ProfilePage() {
                 PEA
               </label>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Situation spécifique</Label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={profile.has_disability}
+                onChange={(event) =>
+                  setProfile((prev) => ({ ...prev, has_disability: event.target.checked }))
+                }
+              />
+              Situation de handicap déclarée
+            </label>
           </div>
           <div className="flex items-start gap-2 text-xs text-muted-foreground md:col-span-2">
             <input

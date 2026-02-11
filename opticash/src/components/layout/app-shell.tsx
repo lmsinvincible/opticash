@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { getSession, signOut } from "@/lib/supabase/auth";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
 
 const navItems = [
   { label: "Dashboard", href: routes.app.dashboard },
@@ -20,6 +21,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [taxBoosted, setTaxBoosted] = useState(false);
 
   useEffect(() => {
@@ -29,9 +31,18 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         const session = await getSession();
         if (!mounted) return;
         setEmail(session?.user.email ?? null);
+        if (session?.user.id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          setAvatarUrl(profile?.avatar_url ?? null);
+        }
       } catch {
         if (!mounted) return;
         setEmail(null);
+        setAvatarUrl(null);
       }
     };
     load();
@@ -118,7 +129,18 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
 
         <main className="flex-1">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-background px-6 py-4">
-            <div>
+            <div className="flex items-center gap-3">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="h-10 w-10 rounded-full border border-emerald-200 object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700">
+                  {email ? email.charAt(0).toUpperCase() : "O"}
+                </div>
+              )}
               <Link href={routes.marketing.home} className="inline-flex flex-col">
                 <span className="text-xs uppercase text-muted-foreground">OptiCash</span>
                 <span className="text-xl font-semibold">Pilotage des économies</span>
@@ -143,7 +165,12 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
               <Button variant="outline" size="sm">
                 Ajouter une source
               </Button>
-              <Button size="sm">Voir mon plan</Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={routes.app.profile}>Mon profil</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href={routes.app.plan}>Voir mon plan</Link>
+              </Button>
             </div>
           </div>
           {children}
