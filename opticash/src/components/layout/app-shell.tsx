@@ -60,6 +60,13 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     return <div className="min-h-screen bg-muted/30">{children}</div>;
   }
 
+  const showChatToggle = true;
+
+  const handleOpenChat = () => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event("opticash:open-chat"));
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-6">
@@ -85,6 +92,15 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                 {item.label}
               </Link>
             ))}
+            {showChatToggle ? (
+              <button
+                type="button"
+                onClick={handleOpenChat}
+                className="rounded-lg px-3 py-2 text-left text-sm text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Ouvrir le chat
+              </button>
+            ) : null}
           </nav>
           <Separator />
           <Button variant="outline" size="sm" asChild>
@@ -106,6 +122,11 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
             <div className="flex items-center gap-3">
               {email ? (
                 <span className="text-xs text-muted-foreground">{email}</span>
+              ) : null}
+              {showChatToggle ? (
+                <Button variant="outline" size="sm" onClick={handleOpenChat}>
+                  Chat
+                </Button>
               ) : null}
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Se déconnecter
