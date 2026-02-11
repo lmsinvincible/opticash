@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Cropper from "react-easy-crop";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +61,16 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileForm>(emptyForm);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -200,11 +211,10 @@ export default function ProfilePage() {
         toast.error("Session invalide.");
         return;
       }
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${userId}/avatar.${ext}`;
+      const path = `${userId}/avatar.jpg`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: "image/jpeg" });
       if (uploadError) {
         throw uploadError;
       }
@@ -215,6 +225,67 @@ export default function ProfilePage() {
       toast.success("Photo de profil mise à jour.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur upload avatar.";
+      toast.error(message);
+    }
+  };
+
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(image));
+      image.addEventListener("error", (error) => reject(error));
+      image.setAttribute("crossOrigin", "anonymous");
+      image.src = url;
+    });
+
+  const getCroppedImage = async (imageSrc: string, pixelCrop: { width: number; height: number; x: number; y: number; }) => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas unavailable");
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      512,
+      512
+    );
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Image processing failed"));
+          return;
+        }
+        resolve(blob);
+      }, "image/jpeg", 0.9);
+    });
+  };
+
+  const handleSelectAvatar = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = async () => {
+    if (!cropSrc || !croppedAreaPixels) return;
+    try {
+      const blob = await getCroppedImage(cropSrc, croppedAreaPixels);
+      const croppedFile = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+      await handleAvatarUpload(croppedFile);
+      setCropOpen(false);
+      setCropSrc(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur recadrage.";
       toast.error(message);
     }
   };
@@ -254,7 +325,7 @@ export default function ProfilePage() {
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (file) {
-                      void handleAvatarUpload(file);
+                      void handleSelectAvatar(file);
                     }
                   }}
                 />
@@ -507,6 +578,43 @@ export default function ProfilePage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {cropOpen && cropSrc ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-background p-4">
+            <div className="mb-3 text-sm font-medium">Recadrer la photo</div>
+            <div className="relative h-72 w-full overflow-hidden rounded-lg bg-muted">
+              <Cropper
+                image={cropSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <Label className="text-xs text-muted-foreground">Zoom</Label>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                className="flex-1"
+              />
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setCropOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleCropConfirm}>Enregistrer</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
