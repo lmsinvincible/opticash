@@ -220,8 +220,16 @@ export default function ProfilePage() {
       }
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       const avatarUrl = data.publicUrl;
-      await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", userId);
+      if (profileError) {
+        throw profileError;
+      }
       setProfile((prev) => ({ ...prev, avatar_url: avatarUrl }));
+      localStorage.setItem("opticash:avatar_url", avatarUrl);
+      window.dispatchEvent(new Event("opticash:avatar_updated"));
       toast.success("Photo de profil mise à jour.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur upload avatar.";

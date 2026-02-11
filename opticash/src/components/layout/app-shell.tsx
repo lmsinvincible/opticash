@@ -13,7 +13,6 @@ const navItems = [
   { label: "Plan", href: routes.app.plan },
   { label: "Findings", href: routes.app.findings },
   { label: "Importer CSV", href: "/import/csv" },
-  { label: "Mon profil", href: routes.app.profile },
   { label: "Settings", href: routes.app.settings },
 ];
 
@@ -31,6 +30,10 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         const session = await getSession();
         if (!mounted) return;
         setEmail(session?.user.email ?? null);
+        const cachedAvatar = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_url") : null;
+        if (cachedAvatar) {
+          setAvatarUrl(cachedAvatar);
+        }
         if (session?.user.id) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -49,6 +52,17 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      const cachedAvatar = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_url") : null;
+      if (cachedAvatar) {
+        setAvatarUrl(cachedAvatar);
+      }
+    };
+    window.addEventListener("opticash:avatar_updated", handler);
+    return () => window.removeEventListener("opticash:avatar_updated", handler);
   }, []);
 
   useEffect(() => {
