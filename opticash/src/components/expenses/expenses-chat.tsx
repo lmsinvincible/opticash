@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -25,6 +26,9 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   const [chatLoading, setChatLoading] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const searchParams = useSearchParams();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1023px)");
@@ -39,6 +43,31 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
       setChatMessages([{ role: "assistant", content: DEFAULT_PROMPT }]);
     }
   }, [chatMessages.length]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (isMobile) {
+        setIsMobileOpen(true);
+      } else {
+        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => inputRef.current?.focus(), 200);
+      }
+    };
+    window.addEventListener("opticash:open-chat", handler);
+    return () => window.removeEventListener("opticash:open-chat", handler);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get("openChat") === "1") {
+      if (isMobile) {
+        setIsMobileOpen(true);
+      } else {
+        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => inputRef.current?.focus(), 200);
+      }
+    }
+  }, [isMobile, searchParams]);
 
   const handleChatSend = async () => {
     if (!chatInput.trim()) return;
@@ -89,7 +118,7 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   };
 
   const ChatBody = (
-    <div className="flex h-full flex-col gap-3">
+    <div ref={containerRef} id="expenses-chat" className="flex h-full flex-col gap-3">
       <div className="flex-1 space-y-2 overflow-auto rounded-md border p-3 text-sm text-muted-foreground">
         {chatMessages.map((msg, index) => (
           <div
@@ -106,6 +135,7 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
       </div>
       <div className="flex gap-2">
         <input
+          ref={inputRef}
           className="flex-1 rounded-md border px-3 py-2 text-sm"
           placeholder="Pose ta question…"
           value={chatInput}

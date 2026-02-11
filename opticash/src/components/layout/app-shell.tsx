@@ -12,6 +12,7 @@ const navItems = [
   { label: "Plan", href: routes.app.plan },
   { label: "Findings", href: routes.app.findings },
   { label: "Importer CSV", href: "/import/csv" },
+  { label: "Mon profil", href: routes.app.profile },
   { label: "Settings", href: routes.app.settings },
 ];
 
@@ -64,7 +65,11 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
 
   const handleOpenChat = () => {
     if (typeof window === "undefined") return;
-    window.dispatchEvent(new Event("opticash:open-chat"));
+    if (pathname?.startsWith("/expenses")) {
+      window.dispatchEvent(new Event("opticash:open-chat"));
+      return;
+    }
+    router.push("/expenses?openChat=1");
   };
 
   return (
@@ -96,9 +101,9 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
               <button
                 type="button"
                 onClick={handleOpenChat}
-                className="rounded-lg px-3 py-2 text-left text-sm text-emerald-700 transition hover:bg-emerald-50"
+                className="rounded-lg bg-gradient-to-r from-slate-900 via-indigo-600 to-cyan-500 px-3 py-2 text-left text-sm font-medium text-white shadow-sm transition hover:from-slate-900 hover:via-indigo-500 hover:to-cyan-400"
               >
-                Ouvrir le chat
+                Chat IA
               </button>
             ) : null}
           </nav>
@@ -124,8 +129,12 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                 <span className="text-xs text-muted-foreground">{email}</span>
               ) : null}
               {showChatToggle ? (
-                <Button variant="outline" size="sm" onClick={handleOpenChat}>
-                  Chat
+                <Button
+                  size="sm"
+                  onClick={handleOpenChat}
+                  className="bg-gradient-to-r from-slate-900 via-indigo-600 to-cyan-500 text-white shadow-sm hover:from-slate-900 hover:via-indigo-500 hover:to-cyan-400"
+                >
+                  Chat IA
                 </Button>
               ) : null}
               <Button variant="ghost" size="sm" onClick={handleLogout}>

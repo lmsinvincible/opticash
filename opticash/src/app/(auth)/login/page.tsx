@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { routes } from "@/lib/config";
 import { signInWithPassword } from "@/lib/supabase/auth";
+import { supabase } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,8 +22,21 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      await signInWithPassword(email, password);
+      const { data } = await signInWithPassword(email, password);
       toast.success("Connexion réussie");
+      const userId = data.session?.user.id;
+      if (userId) {
+        await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", userId);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("profile_completed")
+          .eq("id", userId)
+          .maybeSingle();
+        if (profile?.profile_completed) {
+          router.push(routes.app.dashboard);
+          return;
+        }
+      }
       router.push("/onboarding");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";

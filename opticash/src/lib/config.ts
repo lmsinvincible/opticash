@@ -16,6 +16,7 @@ export const routes = {
     dashboard: "/dashboard",
     plan: "/plan",
     findings: "/findings",
+    profile: "/profile",
     settings: "/settings",
   },
 };
