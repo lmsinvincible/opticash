@@ -32,10 +32,7 @@ export default function ExpenseMerchantPage() {
   const overlayActive = isPending;
 
   useEffect(() => {
-    if (!overlayActive) {
-      setOverlayProgress(0);
-      return;
-    }
+    if (!overlayActive) return;
     const interval = setInterval(() => {
       setOverlayProgress((prev) => (prev >= 90 ? prev : prev + 3));
     }, 180);
