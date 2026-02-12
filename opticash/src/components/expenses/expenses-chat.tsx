@@ -80,7 +80,10 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   const handleChatSend = async () => {
     if (!chatInput.trim()) return;
     const content = chatInput.trim();
-    const nextMessages = [...chatMessages, { role: "user", content }];
+    const nextMessages: ChatMessage[] = [
+      ...chatMessages,
+      { role: "user" as const, content },
+    ];
     setChatMessages(nextMessages);
     setChatInput("");
 
