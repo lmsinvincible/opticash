@@ -61,6 +61,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileForm>(emptyForm);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -171,6 +172,32 @@ export default function ProfilePage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur suppression.";
       toast.error(message);
+    }
+  };
+
+  const handlePortal = async () => {
+    try {
+      setPortalLoading(true);
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) {
+        toast.error("Session invalide.");
+        return;
+      }
+      const response = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error || "Portail indisponible.");
+      }
+      window.location.href = payload.url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Portail indisponible.";
+      toast.error(message);
+    } finally {
+      setPortalLoading(false);
     }
   };
 
@@ -573,8 +600,8 @@ export default function ProfilePage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <div>Statut : {profile.is_premium ? "Premium" : "Gratuit"}</div>
           {profile.premium_until ? <div>Fin : {profile.premium_until}</div> : null}
-          <Button variant="outline" size="sm">
-            Gérer mon abonnement
+          <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading}>
+            {portalLoading ? "Ouverture..." : "Gérer mon abonnement"}
           </Button>
         </CardContent>
       </Card>
