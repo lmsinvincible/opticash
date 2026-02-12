@@ -247,7 +247,10 @@ export default function ExpenseLinePage() {
 
   const handleChatSend = async () => {
     if (!chatInput.trim()) return;
-    const nextMessages = [...chatMessages, { role: "user", content: chatInput.trim() }];
+    const nextMessages = [
+      ...chatMessages,
+      { role: "user" as const, content: chatInput.trim() },
+    ];
     setChatMessages(nextMessages);
     setChatInput("");
     setChatLoading(true);
