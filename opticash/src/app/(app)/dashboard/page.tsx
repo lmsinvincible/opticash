@@ -102,6 +102,16 @@ export default function DashboardPage() {
   }, [loadData]);
 
   useEffect(() => {
+    if (!loading) return;
+    const timeout = setTimeout(() => {
+      if (!mountedRef.current) return;
+      setError("Chargement trop long. Réessaie.");
+      setLoading(false);
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
+  useEffect(() => {
     const flag = localStorage.getItem("opticash:dashboard_refresh");
     if (flag === "1") {
       localStorage.removeItem("opticash:dashboard_refresh");
@@ -148,7 +158,12 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>Impossible de charger les données</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">{error}</CardContent>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>{error}</p>
+          <Button size="sm" onClick={loadData}>
+            Réessayer
+          </Button>
+        </CardContent>
       </Card>
     );
   }
