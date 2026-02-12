@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [creatingDemo, setCreatingDemo] = useState(false);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -103,10 +104,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading) return;
+    setLoadingTimedOut(false);
     const timeout = setTimeout(() => {
       if (!mountedRef.current) return;
       setError("Chargement trop long. Réessaie.");
       setLoading(false);
+      setLoadingTimedOut(true);
     }, 8000);
     return () => clearTimeout(timeout);
   }, [loading]);
@@ -122,9 +125,28 @@ export default function DashboardPage() {
   const demoSummary = useMemo(() => dashboardSummary, []);
   const demoItems = useMemo(() => planItems.slice(0, 3), []);
 
+  if (loading && loadingTimedOut) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Chargement trop long</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>Le tableau de bord met trop de temps à répondre.</p>
+          <Button size="sm" onClick={loadData}>
+            Réessayer
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
+        <Card className="p-4 text-sm text-muted-foreground">
+          Chargement du tableau de bord…
+        </Card>
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="h-32 animate-pulse" />
           <Card className="h-32 animate-pulse" />
