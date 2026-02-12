@@ -183,15 +183,6 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
               {isAuthenticated ? (
                 <span className="text-xs text-muted-foreground">{email}</span>
               ) : null}
-              {showChatToggle && isAuthenticated ? (
-                <Button
-                  size="sm"
-                  onClick={handleOpenChat}
-                  className="bg-gradient-to-r from-slate-900 via-indigo-600 to-cyan-500 text-white shadow-sm hover:from-slate-900 hover:via-indigo-500 hover:to-cyan-400"
-                >
-                  Chat IA
-                </Button>
-              ) : null}
               {isAuthenticated ? (
                 <>
                   <Button variant="outline" size="sm" asChild>
