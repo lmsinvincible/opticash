@@ -7,6 +7,7 @@ import { getSession, signOut } from "@/lib/supabase/auth";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { ExpensesChat } from "@/components/expenses/expenses-chat";
 
 const navItems = [
   { label: "Dashboard", href: routes.app.dashboard },
@@ -21,6 +22,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
   const [taxBoosted, setTaxBoosted] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<string | null>(null);
 
@@ -42,15 +44,17 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         if (session?.user.id) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("avatar_url")
+            .select("avatar_url, is_premium")
             .eq("id", session.user.id)
             .maybeSingle();
           setAvatarUrl(profile?.avatar_url ?? null);
+          setIsPremium(Boolean(profile?.is_premium));
         }
       } catch {
         if (!mounted) return;
         setEmail(null);
         setAvatarUrl(null);
+        setIsPremium(false);
       }
     };
     load();
@@ -99,14 +103,16 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
 
   const handleOpenChat = () => {
     if (typeof window === "undefined") return;
-    if (pathname?.startsWith("/expenses")) {
-      window.dispatchEvent(new Event("opticash:open-chat"));
-      return;
+    try {
+      localStorage.setItem("opticash:open-chat", "1");
+    } catch {
+      // ignore storage failures
     }
-    router.push("/expenses?openChat=1");
+    window.dispatchEvent(new Event("opticash:open-chat"));
   };
 
   const isAuthenticated = Boolean(email);
+  const showGlobalChat = isAuthenticated && !pathname?.startsWith("/expenses");
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -209,6 +215,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           </div>
           {children}
         </main>
+        {showGlobalChat ? <ExpensesChat summary={{}} isPremium={isPremium} title="Assistant OptiCash" /> : null}
       </div>
     </div>
   );

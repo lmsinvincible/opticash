@@ -297,7 +297,16 @@ export default function OnboardingPage() {
                     }
                   />
                 </div>
-                <div className="flex items-start gap-2 text-xs text-muted-foreground md:col-span-2">
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-2 text-muted-foreground">
+                <p>
+                  C&apos;est bon ! Tes informations sont prêtes pour personnaliser ton analyse.
+                </p>
+                <p>Tu peux modifier ces infos à tout moment dans Mon profil.</p>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
                   <input
                     id="consent_rgpd"
                     type="checkbox"
@@ -311,15 +320,6 @@ export default function OnboardingPage() {
                     J&apos;accepte le traitement de mes données conformément au RGPD.
                   </Label>
                 </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-2 text-muted-foreground">
-                <p>
-                  C&apos;est bon ! Tes informations sont prêtes pour personnaliser ton analyse.
-                </p>
-                <p>Tu peux modifier ces infos à tout moment dans Mon profil.</p>
               </div>
             )}
 

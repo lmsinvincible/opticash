@@ -26,6 +26,7 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   const [chatLoading, setChatLoading] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -44,28 +45,35 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
     }
   }, [chatMessages.length]);
 
+  const openChat = () => {
+    if (isMobile) {
+      setIsOpen(true);
+      setIsMobileOpen(true);
+    } else {
+      setIsOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 200);
+    }
+  };
+
   useEffect(() => {
-    const handler = () => {
-      if (isMobile) {
-        setIsMobileOpen(true);
-      } else {
-        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(() => inputRef.current?.focus(), 200);
-      }
-    };
+    const handler = () => openChat();
     window.addEventListener("opticash:open-chat", handler);
     return () => window.removeEventListener("opticash:open-chat", handler);
   }, [isMobile]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const flag = window.localStorage.getItem("opticash:open-chat");
+    if (flag === "1") {
+      window.localStorage.removeItem("opticash:open-chat");
+      openChat();
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
     if (!searchParams) return;
     if (searchParams.get("openChat") === "1") {
-      if (isMobile) {
-        setIsMobileOpen(true);
-      } else {
-        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(() => inputRef.current?.focus(), 200);
-      }
+      openChat();
     }
   }, [isMobile, searchParams]);
 
@@ -152,10 +160,13 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
     return (
       <>
         <button
-          className="fixed bottom-6 right-6 z-40 rounded-full bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg"
-          onClick={() => setIsMobileOpen(true)}
+          className="fixed bottom-6 right-6 z-40 rounded-full bg-gradient-to-br from-slate-900 via-indigo-700 to-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg"
+          onClick={() => {
+            setIsOpen(true);
+            setIsMobileOpen(true);
+          }}
         >
-          Chat
+          Chat IA
         </button>
         {isMobileOpen && (
           <div className="fixed inset-0 z-50 flex items-end bg-black/30">
@@ -164,7 +175,10 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
                 <h3 className="text-sm font-semibold">{title}</h3>
                 <button
                   className="text-sm text-muted-foreground"
-                  onClick={() => setIsMobileOpen(false)}
+                  onClick={() => {
+                    setIsMobileOpen(false);
+                    setIsOpen(false);
+                  }}
                 >
                   Fermer
                 </button>
@@ -178,11 +192,31 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   }
 
   return (
-    <aside className="fixed right-6 top-28 z-30 hidden h-[70vh] w-80 flex-col gap-3 lg:flex">
-      <div className="rounded-xl border bg-background p-4 shadow-lg">
-        <h3 className="mb-3 text-sm font-semibold">{title}</h3>
-        <div className="h-[58vh]">{ChatBody}</div>
-      </div>
-    </aside>
+    <>
+      <button
+        type="button"
+        className="fixed bottom-6 right-6 z-40 hidden rounded-full bg-gradient-to-br from-slate-900 via-indigo-700 to-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg lg:flex"
+        onClick={() => setIsOpen(true)}
+      >
+        Chat IA
+      </button>
+      {isOpen ? (
+        <aside className="fixed right-6 top-28 z-30 hidden h-[70vh] w-80 flex-col gap-3 lg:flex">
+          <div className="rounded-xl border bg-background p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">{title}</h3>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="h-[58vh]">{ChatBody}</div>
+          </div>
+        </aside>
+      ) : null}
+    </>
   );
 }

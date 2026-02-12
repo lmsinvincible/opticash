@@ -40,6 +40,7 @@ export default function ExpensesPage() {
   const categoryParam = searchParams.get("category");
   const lineParam = searchParams.get("line");
   const overlayActive = loading || refreshing || isPending;
+  const canViewDetails = isPremium || isAdmin;
 
   useEffect(() => {
     if (!overlayActive) {
@@ -53,6 +54,24 @@ export default function ExpensesPage() {
     }, 180);
     return () => clearInterval(interval);
   }, [overlayActive]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get("openChat") === "1") {
+      window.dispatchEvent(new Event("opticash:open-chat"));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 85) return prev;
+        return prev + 1;
+      });
+    }, 250);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     let mounted = true;
@@ -295,7 +314,7 @@ export default function ExpensesPage() {
       });
 
       const bytes = await pdfDoc.save();
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -376,7 +395,7 @@ export default function ExpensesPage() {
       draw(`Filtre : ${summary.query ? `"${summary.query}"` : "aucun"}`, 11);
 
       const bytes = await pdfDoc.save();
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -392,65 +411,58 @@ export default function ExpensesPage() {
   };
 
   if (loading) {
+    const progressValue = Math.max(5, loadingProgress);
     return (
-      <div className="space-y-6">
-        <Card className="p-6">
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium">Analyse en cours…</h3>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-2 rounded-full bg-emerald-500 transition-all"
-                style={{ width: `${Math.max(10, loadingProgress)}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Nous analysons tes dépenses détaillées. Merci de patienter quelques secondes.
-            </p>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Card className="w-56 rounded-2xl border bg-background p-5 text-center shadow-lg">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+          </div>
+          <h3 className="text-sm font-semibold">Analyse en cours…</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{progressValue}%</p>
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-2 rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${progressValue}%` }}
+            />
           </div>
         </Card>
-        <Card className="h-64 animate-pulse" />
       </div>
-    );
-  }
-
-  if (!isPremium && !isAdmin) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Accès Premium requis</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>Le détail ligne par ligne est réservé aux comptes Premium.</p>
-          <Button asChild>
-            <Link href="/upgrade">Passer Premium</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Impossible de charger les dépenses</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">{error}</CardContent>
-      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
+      {!isPremium && !isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Accès Premium requis</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>Le détail ligne par ligne est réservé aux comptes Premium.</p>
+            <Button asChild>
+              <Link href="/upgrade">Passer Premium</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {error && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Impossible de charger les dépenses</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">{error}</CardContent>
+        </Card>
+      )}
       {overlayActive && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4">
-          <div className="pointer-events-auto w-full max-w-md rounded-xl bg-background p-6 text-center shadow-lg">
-            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-            <h3 className="text-lg font-semibold">Chargement des détails…</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Cela prend quelques secondes. Tu peux continuer à naviguer.
+          <div className="pointer-events-auto w-64 rounded-2xl bg-background p-4 text-center shadow-lg">
+            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+            <h3 className="text-sm font-semibold">Analyse en cours…</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {overlayProgress ? `${overlayProgress}%` : ""} Merci de patienter quelques secondes.
             </p>
-            <div className="mt-4">
+            <div className="mt-3">
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full bg-emerald-500 transition-[width] duration-300"
@@ -474,66 +486,67 @@ export default function ExpensesPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Rechercher une dépense</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-            <input
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="Rechercher un libellé, un lieu, une catégorie..."
-              value={query}
-              onChange={(event) => startTransition(() => setQuery(event.target.value))}
-            />
-            <div
-              className="text-sm text-muted-foreground"
-              title="Total des dépenses filtrées"
-            >
-              Total dépensé :{" "}
-              <span className="font-medium text-foreground">
-                {formatCents(Math.round(totalSpent * 100))}
-              </span>
+      {canViewDetails && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rechercher une dépense</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+              <input
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                placeholder="Rechercher un libellé, un lieu, une catégorie..."
+                value={query}
+                onChange={(event) => startTransition(() => setQuery(event.target.value))}
+              />
+              <div className="text-sm text-muted-foreground" title="Total des dépenses filtrées">
+                Total dépensé :{" "}
+                <span className="font-medium text-foreground">
+                  {formatCents(Math.round(totalSpent * 100))}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={handleExportPdf}>
-              Exporter le résumé PDF
-            </Button>
-            <Button size="sm" onClick={handleExportPdfWithAi} disabled={pdfLoading}>
-              {pdfLoading ? "Génération..." : "Résumé PDF IA"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={handleExportPdf}>
+                Exporter le résumé PDF
+              </Button>
+              <Button size="sm" onClick={handleExportPdfWithAi} disabled={pdfLoading}>
+                {pdfLoading ? "Génération..." : "Résumé PDF IA"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Catégories détectées</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          {categories.map((category) => (
-            <Link
-              key={category.slug}
-              href={`/expenses/category/${category.slug}`}
-              className="rounded-lg border px-4 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/50"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{category.category}</span>
-                <span className="text-muted-foreground">{category.count} lignes</span>
-              </div>
-              <div className="mt-2 text-sm text-emerald-700">
-                Total: {formatCents(Math.round(category.total * 100))}
-              </div>
-            </Link>
-          ))}
-          {categories.length === 0 && (
-            <div className="text-sm text-muted-foreground">Aucune catégorie disponible.</div>
-          )}
-        </CardContent>
-      </Card>
+      {canViewDetails && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Catégories détectées</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            {categories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/expenses/category/${category.slug}`}
+                className="rounded-lg border px-4 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50/50"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{category.category}</span>
+                  <span className="text-muted-foreground">{category.count} lignes</span>
+                </div>
+                <div className="mt-2 text-sm text-emerald-700">
+                  Total: {formatCents(Math.round(category.total * 100))}
+                </div>
+              </Link>
+            ))}
+            {categories.length === 0 && (
+              <div className="text-sm text-muted-foreground">Aucune catégorie disponible.</div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      {(query.trim().length > 0 || categoryParam) && (
+      {canViewDetails && (query.trim().length > 0 || categoryParam) && (
         <Card>
         <CardHeader>
           <CardTitle>
