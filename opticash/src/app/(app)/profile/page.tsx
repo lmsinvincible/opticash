@@ -230,8 +230,10 @@ export default function ProfilePage() {
         throw profileError;
       }
       setProfile((prev) => ({ ...prev, avatar_url: avatarUrl }));
-      setAvatarVersion((prev) => prev + 1);
+      const nextVersion = Date.now();
+      setAvatarVersion(nextVersion);
       localStorage.setItem("opticash:avatar_url", avatarUrl);
+      localStorage.setItem("opticash:avatar_version", String(nextVersion));
       window.dispatchEvent(new Event("opticash:avatar_updated"));
       toast.success("Photo de profil mise à jour.");
     } catch (err) {

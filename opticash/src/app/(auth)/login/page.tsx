@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { routes } from "@/lib/config";
-import { signInWithPassword } from "@/lib/supabase/auth";
+import { signInWithOAuth, signInWithPassword } from "@/lib/supabase/auth";
 import { supabase } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -17,14 +17,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     try {
-      const { data } = await signInWithPassword(email, password);
+      const result = await signInWithPassword(email, password);
+      const session = result?.session;
+      if (!session) {
+        throw new Error("Connexion incomplète. Merci de réessayer.");
+      }
       toast.success("Connexion réussie");
-      const userId = data.session?.user.id;
+      const userId = session.user?.id;
       if (userId) {
         await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", userId);
         const { data: profile } = await supabase
@@ -43,6 +48,18 @@ export default function LoginPage() {
       toast.error(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setOauthLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/onboarding`;
+      await signInWithOAuth("google", redirectTo);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Connexion Google impossible.";
+      toast.error(message);
+      setOauthLoading(false);
     }
   };
 
@@ -80,6 +97,15 @@ export default function LoginPage() {
               {loading ? "Connexion..." : "Continuer"}
             </Button>
           </form>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogle}
+            disabled={oauthLoading}
+          >
+            {oauthLoading ? "Redirection..." : "Continuer avec Google"}
+          </Button>
           <div className="flex justify-between text-xs text-muted-foreground">
             <Link href={routes.auth.reset}>Mot de passe oublié ?</Link>
             <Link href={routes.auth.signup}>Créer un compte</Link>

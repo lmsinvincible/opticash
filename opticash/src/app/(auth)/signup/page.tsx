@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { routes } from "@/lib/config";
-import { signUp } from "@/lib/supabase/auth";
+import { signInWithOAuth, signUp } from "@/lib/supabase/auth";
 import { supabase } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -26,6 +26,7 @@ export default function SignupPage() {
   const [postalCode, setPostalCode] = useState("");
   const [consentRgpd, setConsentRgpd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -73,6 +74,18 @@ export default function SignupPage() {
       toast.error(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setOauthLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/onboarding`;
+      await signInWithOAuth("google", redirectTo);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Connexion Google impossible.";
+      toast.error(message);
+      setOauthLoading(false);
     }
   };
 
@@ -228,6 +241,17 @@ export default function SignupPage() {
               </Button>
             </form>
           )}
+          {!submitted ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogle}
+              disabled={oauthLoading}
+            >
+              {oauthLoading ? "Redirection..." : "Continuer avec Google"}
+            </Button>
+          ) : null}
           <div className="flex justify-between text-xs text-muted-foreground">
             <Link href={routes.auth.login}>Déjà inscrit ?</Link>
             <Link href={routes.marketing.terms}>CGU</Link>

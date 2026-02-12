@@ -29,8 +29,11 @@ export const signUp = async (email: string, password: string, redirectTo?: strin
   return data;
 };
 
-export const signInWithOAuth = async (provider: Provider) => {
-  const { data, error } = await supabase.auth.signInWithOAuth({ provider });
+export const signInWithOAuth = async (provider: Provider, redirectTo?: string) => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: redirectTo ? { redirectTo } : undefined,
+  });
   if (error) {
     throw error;
   }

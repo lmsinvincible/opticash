@@ -22,6 +22,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   const [email, setEmail] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [taxBoosted, setTaxBoosted] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -31,8 +32,12 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         if (!mounted) return;
         setEmail(session?.user.email ?? null);
         const cachedAvatar = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_url") : null;
+        const cachedVersion = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_version") : null;
         if (cachedAvatar) {
           setAvatarUrl(cachedAvatar);
+        }
+        if (cachedVersion) {
+          setAvatarVersion(cachedVersion);
         }
         if (session?.user.id) {
           const { data: profile } = await supabase
@@ -57,8 +62,12 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const handler = () => {
       const cachedAvatar = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_url") : null;
+      const cachedVersion = typeof window !== "undefined" ? localStorage.getItem("opticash:avatar_version") : null;
       if (cachedAvatar) {
         setAvatarUrl(cachedAvatar);
+      }
+      if (cachedVersion) {
+        setAvatarVersion(cachedVersion);
       }
     };
     window.addEventListener("opticash:avatar_updated", handler);
@@ -96,6 +105,8 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     }
     router.push("/expenses?openChat=1");
   };
+
+  const isAuthenticated = Boolean(email);
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -144,27 +155,29 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         <main className="flex-1">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-background px-6 py-4">
             <div className="flex items-center gap-3">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="h-10 w-10 rounded-full border border-emerald-200 object-cover"
-                />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700">
-                  {email ? email.charAt(0).toUpperCase() : "O"}
-                </div>
-              )}
+              {isAuthenticated ? (
+                avatarUrl ? (
+                  <img
+                    src={`${avatarUrl}${avatarVersion ? `?v=${avatarVersion}` : ""}`}
+                    alt="Avatar"
+                    className="h-10 w-10 rounded-full border border-emerald-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700">
+                    {email ? email.charAt(0).toUpperCase() : "O"}
+                  </div>
+                )
+              ) : null}
               <Link href={routes.marketing.home} className="inline-flex flex-col">
                 <span className="text-xs uppercase text-muted-foreground">OptiCash</span>
                 <span className="text-xl font-semibold">Pilotage des économies</span>
               </Link>
             </div>
             <div className="flex items-center gap-3">
-              {email ? (
+              {isAuthenticated ? (
                 <span className="text-xs text-muted-foreground">{email}</span>
               ) : null}
-              {showChatToggle ? (
+              {showChatToggle && isAuthenticated ? (
                 <Button
                   size="sm"
                   onClick={handleOpenChat}
@@ -173,18 +186,25 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                   Chat IA
                 </Button>
               ) : null}
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                Se déconnecter
-              </Button>
-              <Button variant="outline" size="sm">
-                Ajouter une source
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={routes.app.profile}>Mon profil</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href={routes.app.plan}>Voir mon plan</Link>
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/abonnement">Abonnement</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                    Se déconnecter
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Ajouter une source
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={routes.app.profile}>Mon profil</Link>
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link href={routes.app.plan}>Voir mon plan</Link>
+                  </Button>
+                </>
+              ) : null}
             </div>
           </div>
           {children}
