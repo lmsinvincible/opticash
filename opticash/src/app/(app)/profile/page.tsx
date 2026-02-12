@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Cropper from "react-easy-crop";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,8 @@ export default function ProfilePage() {
     x: number;
     y: number;
   } | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -228,6 +230,7 @@ export default function ProfilePage() {
         throw profileError;
       }
       setProfile((prev) => ({ ...prev, avatar_url: avatarUrl }));
+      setAvatarVersion((prev) => prev + 1);
       localStorage.setItem("opticash:avatar_url", avatarUrl);
       window.dispatchEvent(new Event("opticash:avatar_updated"));
       toast.success("Photo de profil mise à jour.");
@@ -314,7 +317,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4">
               {profile.avatar_url ? (
                 <img
-                  src={profile.avatar_url}
+                  src={`${profile.avatar_url}?v=${avatarVersion}`}
                   alt="Avatar"
                   className="h-20 w-20 rounded-full border border-emerald-200 object-cover"
                 />
@@ -327,6 +330,7 @@ export default function ProfilePage() {
                 <CardTitle className="text-2xl">Mon profil</CardTitle>
                 <div className="text-xs text-muted-foreground">Photo de profil</div>
                 <Input
+                  ref={avatarInputRef}
                   type="file"
                   accept="image/*"
                   className="mt-2 max-w-xs"
@@ -334,6 +338,9 @@ export default function ProfilePage() {
                     const file = event.target.files?.[0];
                     if (file) {
                       void handleSelectAvatar(file);
+                    }
+                    if (avatarInputRef.current) {
+                      avatarInputRef.current.value = "";
                     }
                   }}
                 />
