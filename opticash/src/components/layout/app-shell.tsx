@@ -191,8 +191,8 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                   <Button variant="ghost" size="sm" onClick={handleLogout}>
                     Se déconnecter
                   </Button>
-                  <Button variant="outline" size="sm">
-                    Ajouter une source
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/import/csv">Ajouter une source</Link>
                   </Button>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={routes.app.profile}>Mon profil</Link>
