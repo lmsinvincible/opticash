@@ -28,7 +28,9 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe();
-    const returnUrl = process.env.APP_URL ? `${process.env.APP_URL}/profile` : "http://localhost:3001/profile";
+    const origin = request.headers.get("origin");
+    const baseUrl = process.env.APP_URL || origin || "http://localhost:3001";
+    const returnUrl = `${baseUrl}/profile`;
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
       return_url: returnUrl,
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    return NextResponse.json({ error: "Portal error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Portal error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

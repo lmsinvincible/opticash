@@ -190,6 +190,17 @@ export default function ProfilePage() {
       });
       const payload = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !payload.url) {
+        if (payload.error === "No Stripe customer") {
+          toast.info("Aucun abonnement actif. Choisis un plan pour activer le portail.");
+          window.location.href = "/abonnement";
+          return;
+        }
+        if (payload.error?.toLowerCase().includes("billing portal")) {
+          throw new Error("Portail Stripe non activé. Vérifie la configuration Billing Portal.");
+        }
+        if (payload.error?.toLowerCase().includes("no such customer")) {
+          throw new Error("Client Stripe introuvable. Vérifie la clé Stripe (test/live) et le client.");
+        }
         throw new Error(payload.error || "Portail indisponible.");
       }
       window.location.href = payload.url;
@@ -602,6 +613,18 @@ export default function ProfilePage() {
           {profile.premium_until ? <div>Fin : {profile.premium_until}</div> : null}
           <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading}>
             {portalLoading ? "Ouverture..." : "Gérer mon abonnement"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Historique des imports</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <div>Accède à tes derniers imports et télécharge les fichiers.</div>
+          <Button asChild variant="outline" size="sm">
+            <a href="/imports">Voir l'historique</a>
           </Button>
         </CardContent>
       </Card>
