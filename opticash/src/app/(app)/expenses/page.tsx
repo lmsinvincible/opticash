@@ -141,7 +141,7 @@ export default function ExpensesPage() {
         }
         setLoadingProgress(45);
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), hadCache ? 45000 : 15000);
+        const timeout = setTimeout(() => controller.abort(), hadCache ? 90000 : 60000);
         const response = await fetch("/api/expenses/analyze", {
           method: "POST",
           headers: {
@@ -167,7 +167,7 @@ export default function ExpensesPage() {
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           if (!hadCache) {
-            const message = "Chargement trop long. Réessaie dans quelques secondes.";
+            const message = "Chargement trop long (jusqu'à 1 min). Réessaie dans quelques secondes.";
             setError(message);
             toast.error(message);
           } else {

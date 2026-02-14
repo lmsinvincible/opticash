@@ -65,7 +65,7 @@ const analyzeBatch = async (lines: ExpenseLine[]): Promise<AiDetail[]> => {
     .join("\n");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
