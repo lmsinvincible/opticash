@@ -205,11 +205,22 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                 alert("Fonctionnalité en cours de développement – dépose ta facture bientôt !")
               }
             >
-              Analyser ma facture
+              🔘 Analyser ma facture
             </Button>
             <p className="mt-3 text-center text-[10px] text-muted-foreground">
               Comparaison basée sur les données du comparateur officiel Énergie-Info (Médiateur
               national de l&apos;énergie). Service gratuit – aucune démarche engagée sans ton accord.
+            </p>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground">
+              Les offres d&apos;électricité et de gaz évoluent plusieurs fois par semaine, voire par
+              jour. La comparaison que nous te proposons est basée sur les données officielles
+              disponibles à l&apos;instant T via le comparateur du Médiateur national de l&apos;énergie. Pour
+              une offre 100 % à jour, vérifie directement sur energie-info.fr.
+            </p>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground">
+              Horaires recommandés pour changer de fournisseur : avant 18h en semaine pour traitement
+              rapide le jour même. Préavis : 1 mois maximum pour particulier, vérifier contrat pour
+              professionnel.
             </p>
           </div>
         </aside>
