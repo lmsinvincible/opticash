@@ -12,7 +12,7 @@ export const MarketingHeader = () => {
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           <Link href={routes.marketing.pricing}>Tarifs</Link>
           <Link href={routes.marketing.privacy}>Confidentialité</Link>
-          <Link href={routes.marketing.terms}>CGU</Link>
+          <Link href="/cgu">CGU</Link>
         </nav>
         <div className="flex items-center gap-3">
           <Link href={routes.auth.login} className="text-sm text-muted-foreground">

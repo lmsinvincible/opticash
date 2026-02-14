@@ -36,16 +36,15 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sources connectées</CardTitle>
+          <CardTitle>Sources importées</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p>Gérez vos imports (CSV) et téléchargez les fichiers originaux.</p>
           <div className="flex items-center justify-between">
-            <span>Banque principale</span>
-            <Button variant="outline" size="sm">Déconnecter</Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>FranceConnect</span>
-            <Button variant="outline" size="sm">Déconnecter</Button>
+            <span>Historique des imports</span>
+            <Button asChild variant="outline" size="sm">
+              <a href="/imports">Voir</a>
+            </Button>
           </div>
         </CardContent>
       </Card>

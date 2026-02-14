@@ -156,6 +156,62 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-600" asChild>
             <Link href="/plan?tax=1">{taxBoosted ? "Refaire boost impôts" : "Lancer Impôts Boost"}</Link>
           </Button>
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 shadow-xl">
+            <h3 className="text-center text-sm font-semibold text-foreground">
+              Vérifier si je dois changer d&apos;offre (électricité / gaz)
+            </h3>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Dépose ta facture (ou renseigne tes infos), et on compare ton contrat aux offres
+              disponibles aujourd&apos;hui sur le comparateur officiel du Médiateur national de
+              l&apos;énergie (Énergie-Info).
+            </p>
+            <div className="mt-4 grid gap-2">
+              {[
+                "🔍 Comparaison instantanée → on te dit si tu peux payer moins cher et de combien",
+                "💰 Économies estimées → montant annuel + mensualité potentielle",
+                "🚀 Étapes claires → liens directs + démarches expliquées",
+              ].map((item) => (
+                <div key={item} className="rounded-lg border bg-white px-3 py-2 text-xs">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <ol className="mt-4 list-decimal space-y-2 pl-4 text-[11px] text-muted-foreground">
+              <li>
+                Tu ajoutes ta facture (PDF ou scan) ou tes infos clés : prix du kWh, abonnement,
+                option tarifaire (Base / HP-HC), consommation annuelle.
+              </li>
+              <li>
+                On estime ton coût annuel actuel et on le compare en temps réel aux offres du marché
+                via le comparateur officiel Énergie-Info.
+              </li>
+              <li>
+                Tu reçois une recommandation claire : Garder ton offre actuelle / Changer →
+                économies estimées + meilleur fournisseur.
+              </li>
+              <li>
+                Particulier : changement gratuit et sans coupure (le nouveau fournisseur
+                s&apos;occupe de tout).
+              </li>
+              <li>
+                Professionnel : on vérifie d&apos;abord ton contrat (échéance, engagement, préavis)
+                avant de conseiller.
+              </li>
+            </ol>
+            <Button
+              size="sm"
+              className="mt-4 w-full bg-blue-800 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-900"
+              onClick={() =>
+                alert("Fonctionnalité en cours de développement – dépose ta facture bientôt !")
+              }
+            >
+              Analyser ma facture
+            </Button>
+            <p className="mt-3 text-center text-[10px] text-muted-foreground">
+              Comparaison basée sur les données du comparateur officiel Énergie-Info (Médiateur
+              national de l&apos;énergie). Service gratuit – aucune démarche engagée sans ton accord.
+            </p>
+          </div>
         </aside>
 
         <main className="flex-1">
