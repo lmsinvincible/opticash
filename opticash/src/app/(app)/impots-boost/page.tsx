@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { ExpensesChat } from "@/components/expenses/expenses-chat";
 
 type Mode = "upload" | "manual" | "both";
 
@@ -44,6 +45,13 @@ export default function ImpotsBoostPage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ActionItem[]>([]);
+  const [chatContext, setChatContext] = useState<{
+    salary: number;
+    km: number;
+    children: number;
+    donations: number;
+    totalGain: number;
+  } | null>(null);
 
   const isImage = useMemo(() => (file ? file.type.startsWith("image/") : false), [file]);
 
@@ -115,6 +123,17 @@ export default function ImpotsBoostPage() {
 
       const payload = (await response.json()) as { items: ActionItem[] };
       setResults(payload.items ?? []);
+      const totalGain = (payload.items ?? []).reduce(
+        (acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0),
+        0
+      );
+      setChatContext({
+        salary,
+        km,
+        children,
+        donations,
+        totalGain: Math.round(totalGain / 100),
+      });
       setProgress(100);
       toast.success("Analyse terminée.");
     } catch (err) {
@@ -255,6 +274,37 @@ export default function ImpotsBoostPage() {
             <CardTitle>Résultats Impôts Boost</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-emerald-50/60 p-4 text-sm">
+              <div className="text-emerald-900">
+                Gain total estimé :{" "}
+                <span className="font-semibold">
+                  {(results.reduce((acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0), 0) / 100).toFixed(0)} € / an
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const prompt = [
+                    "Salut ! Je peux t’aider à optimiser tes impôts.",
+                    `Salaire mensuel estimé : ${chatContext?.salary ?? 0} €`,
+                    `Km domicile-travail : ${chatContext?.km ?? 0} km/an`,
+                    `Dons estimés : ${chatContext?.donations ?? 0} €`,
+                    `Enfants à charge : ${chatContext?.children ?? 0}`,
+                    `Gain total estimé : ${chatContext?.totalGain ?? 0} € / an`,
+                    "Pose-moi une question, par exemple : “Quelle action est la plus rentable ?”",
+                  ]
+                    .filter(Boolean)
+                    .join("\n");
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                      new CustomEvent("opticash:open-chat", { detail: { prompt } })
+                    );
+                  }
+                }}
+              >
+                Ouvrir Chat IA
+              </Button>
+            </div>
             {results.map((item) => (
               <div key={item.action_title} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between">
@@ -280,6 +330,16 @@ export default function ImpotsBoostPage() {
           </CardContent>
         </Card>
       )}
+
+      <ExpensesChat
+        summary={{
+          type: "tax",
+          page: "/impots-boost",
+          context: chatContext ?? {},
+          note: "Assistant impôts pour guider les démarches et optimiser.",
+        }}
+        title="Assistant impôts"
+      />
     </div>
   );
 }
