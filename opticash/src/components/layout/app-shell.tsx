@@ -159,7 +159,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           </Button>
           <Button
             size="sm"
-            className="bg-blue-800 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-900"
+            className="bg-gradient-to-r from-blue-700 via-cyan-600 to-blue-700 text-white shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition hover:scale-[1.03] hover:from-blue-800 hover:via-cyan-600 hover:to-blue-800"
             asChild
           >
             <Link href="/energie">Analyser facture ⚡</Link>
