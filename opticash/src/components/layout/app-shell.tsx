@@ -2,16 +2,12 @@ import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { routes } from "@/lib/config";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getSession, signOut } from "@/lib/supabase/auth";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { ExpensesChat } from "@/components/expenses/expenses-chat";
-import { toast } from "sonner";
 
 const navItems = [
   { label: "Dashboard", href: routes.app.dashboard },
@@ -29,15 +25,6 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   const [isPremium, setIsPremium] = useState(false);
   const [taxBoosted, setTaxBoosted] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState<string | null>(null);
-  const [energyOpen, setEnergyOpen] = useState(false);
-  const [energyForm, setEnergyForm] = useState({
-    postalCode: "",
-    consumptionKwh: "",
-    priceKwh: "",
-    monthlyFee: "",
-    option: "base",
-  });
-  const [energyResult, setEnergyResult] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -124,30 +111,6 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     window.dispatchEvent(new Event("opticash:open-chat"));
   };
 
-  const handleEnergySubmit = () => {
-    const consumption = Number(energyForm.consumptionKwh);
-    const price = Number(energyForm.priceKwh);
-    const monthlyFee = Number(energyForm.monthlyFee);
-    if (!energyForm.postalCode || !consumption || !price || !monthlyFee) {
-      toast.error("Merci de remplir tous les champs.");
-      return;
-    }
-    const yearly = monthlyFee * 12 + price * consumption;
-    setEnergyResult(yearly);
-    const formatted = new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(yearly);
-    toast.success(`Ton coût annuel actuel estimé : ${formatted}`);
-    toast.message(
-      "On t’ouvre le comparateur officiel Énergie-Info avec tes infos pré-remplies."
-    );
-    const url = `https://comparateur.energie-info.fr/?code_postal=${encodeURIComponent(
-      energyForm.postalCode
-    )}&conso=${encodeURIComponent(consumption)}&option=${encodeURIComponent(energyForm.option)}`;
-    window.open(url, "_blank");
-  };
 
   const isAuthenticated = Boolean(email);
   const showGlobalChat = isAuthenticated && !pathname?.startsWith("/expenses");
@@ -236,12 +199,8 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                 avant de conseiller.
               </li>
             </ol>
-            <Button
-              size="sm"
-              className="mt-4 w-full bg-blue-800 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-900"
-              onClick={() => setEnergyOpen(true)}
-            >
-              🔘 Analyser ma facture
+            <Button size="sm" className="mt-4 w-full bg-blue-800 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-900" asChild>
+              <Link href="/energie">⚡ Analyser ma facture</Link>
             </Button>
             <p className="mt-3 text-center text-[10px] text-muted-foreground">
               Comparaison basée sur les données du comparateur officiel Énergie-Info (Médiateur
@@ -308,90 +267,6 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
         </main>
         {showGlobalChat ? <ExpensesChat summary={{}} isPremium={isPremium} title="Assistant OptiCash" /> : null}
       </div>
-      <Dialog open={energyOpen} onOpenChange={setEnergyOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Comparer mon offre énergie</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <Label>Code postal</Label>
-              <Input
-                value={energyForm.postalCode}
-                onChange={(event) =>
-                  setEnergyForm((prev) => ({ ...prev, postalCode: event.target.value }))
-                }
-                placeholder="59000"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Consommation annuelle (kWh)</Label>
-              <Input
-                type="number"
-                value={energyForm.consumptionKwh}
-                onChange={(event) =>
-                  setEnergyForm((prev) => ({ ...prev, consumptionKwh: event.target.value }))
-                }
-                placeholder="3500"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Prix du kWh actuel (€)</Label>
-              <Input
-                type="number"
-                step="0.0001"
-                value={energyForm.priceKwh}
-                onChange={(event) =>
-                  setEnergyForm((prev) => ({ ...prev, priceKwh: event.target.value }))
-                }
-                placeholder="0.25"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Abonnement mensuel (€)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={energyForm.monthlyFee}
-                onChange={(event) =>
-                  setEnergyForm((prev) => ({ ...prev, monthlyFee: event.target.value }))
-                }
-                placeholder="15"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Option tarifaire</Label>
-              <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                value={energyForm.option}
-                onChange={(event) =>
-                  setEnergyForm((prev) => ({ ...prev, option: event.target.value }))
-                }
-              >
-                <option value="base">Base</option>
-                <option value="hp-hc">HP-HC</option>
-              </select>
-            </div>
-            <Button className="w-full" onClick={handleEnergySubmit}>
-              Analyser ma facture
-            </Button>
-            {energyResult !== null ? (
-              <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-                <div className="font-medium text-foreground">Rappels importants</div>
-                <p className="mt-2">
-                  Le marché de l&apos;énergie change plusieurs fois par semaine, voire par jour pour
-                  certaines offres. Les prix que tu vois sont à jour à l&apos;instant T.
-                </p>
-                <p className="mt-2">
-                  Horaires recommandés pour changer de fournisseur : avant 18h en semaine pour
-                  traitement rapide le jour même. Préavis : 1 mois maximum pour particulier, vérifier
-                  contrat pour professionnel.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
