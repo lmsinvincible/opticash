@@ -16,12 +16,16 @@ type EnergyContext = {
   monthlySubElec?: number | string;
   yearly?: number;
   bestOffer?: { name: string; yearly: number };
+  secondOffer?: { name: string; yearly: number; reason: string };
   savings?: number;
   recommendation?: "changer" | "garder";
 };
 
 export default function EnergyDetailsPage() {
   const [context, setContext] = useState<EnergyContext | null>(null);
+  const [stepsText, setStepsText] = useState<string | null>(null);
+  const [stepsLoading, setStepsLoading] = useState(false);
+  const [stepsError, setStepsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -57,6 +61,41 @@ export default function EnergyDetailsPage() {
     }),
     [context]
   );
+
+  useEffect(() => {
+    if (!context) return;
+    const fetchSteps = async () => {
+      setStepsLoading(true);
+      setStepsError(null);
+      try {
+        const payload = {
+          status: isPro ? "professionnel" : "particulier",
+          currentCost,
+          bestOffer: {
+            name: context.bestOffer?.name ?? "Offre simulée",
+            yearly: bestOfferCost,
+          },
+          savings,
+        };
+        const response = await fetch("/api/ai/energy-steps", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error ?? "Impossible de générer les étapes.");
+        }
+        const data = (await response.json()) as { text: string };
+        setStepsText(data.text);
+      } catch (err) {
+        setStepsError(err instanceof Error ? err.message : "Erreur IA");
+      } finally {
+        setStepsLoading(false);
+      }
+    };
+    fetchSteps();
+  }, [context, currentCost, bestOfferCost, isPro, savings]);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 px-6 py-10">
@@ -118,6 +157,37 @@ export default function EnergyDetailsPage() {
       </Card>
 
       <Card className="space-y-4 p-6">
+        <h2 className="flex items-center justify-center gap-2 text-center text-lg font-semibold text-emerald-700">
+          ⭐ La seconde offre la plus intéressante
+        </h2>
+        {context?.secondOffer ? (
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div>
+              Fournisseur :{" "}
+              <span className="font-medium text-foreground">{context.secondOffer.name}</span>
+            </div>
+            <div>
+              Coût annuel :{" "}
+              <span className="font-medium text-foreground">
+                {money(context.secondOffer.yearly)} / an
+              </span>
+            </div>
+            <div>
+              Économie vs ton offre actuelle :{" "}
+              <span className="font-medium text-foreground">
+                {money(Math.max(0, currentCost - context.secondOffer.yearly))} / an
+              </span>
+            </div>
+            <div className="text-sm text-muted-foreground">{context.secondOffer.reason}</div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Aucune seconde offre significative trouvée – la 1re reste la meilleure.
+          </p>
+        )}
+      </Card>
+
+      <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold">Fonctionnement du marché de l’énergie</h2>
         <p className="text-sm text-muted-foreground">
           Le marché de l’énergie en France est libéralisé depuis 2007. Les prix varient en
@@ -142,16 +212,13 @@ export default function EnergyDetailsPage() {
 
       <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold">Comment changer facilement d’offre</h2>
-        <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-          <li>Compare sur energie-info.fr ou notre outil.</li>
-          <li>Choisis une nouvelle offre (le fournisseur s’occupe du changement gratuit).</li>
-          <li>Fournis tes références compteur (PDL/PRM pour élec, PCE pour gaz).</li>
-          <li>Valide – l’ancien contrat est résilié automatiquement (préavis 1 mois max).</li>
-        </ol>
-        <p className="text-sm text-muted-foreground">
-          Pour particulier : gratuit et sans coupure. Pour pro : vérifie engagement (jusqu’à 3
-          ans parfois).
-        </p>
+        {stepsLoading ? (
+          <p className="text-sm text-muted-foreground">Génération des étapes personnalisées…</p>
+        ) : stepsError ? (
+          <p className="text-sm text-muted-foreground">Impossible de générer les étapes.</p>
+        ) : (
+          <div className="whitespace-pre-line text-sm text-muted-foreground">{stepsText}</div>
+        )}
       </Card>
 
       <div className="flex flex-col items-center gap-3">

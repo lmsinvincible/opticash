@@ -77,6 +77,7 @@ export default function EnergiePage() {
   const [uploadResult, setUploadResult] = useState<{
     yearly: number;
     bestOffer: { name: string; yearly: number };
+    secondOffer?: { name: string; yearly: number; reason: string };
     savings: number;
     recommendation: "changer" | "garder";
   } | null>(null);
@@ -113,17 +114,19 @@ export default function EnergiePage() {
         extracted.monthlySubElec * 12 + extracted.yearlyKwh * extracted.priceKwhBase;
 
       const offers = [
-        { name: "Voltix Fixe 12M", delta: 0.12 },
-        { name: "ÉlecZen Indexé", delta: 0.08 },
-        { name: "BleuFlex Énergie", delta: 0.05 },
+        { name: "Voltix Fixe 12M", delta: 0.12, reason: "Offre fixe 12 mois, prix stable." },
+        { name: "ÉlecZen Indexé", delta: 0.08, reason: "Indexé TRV, bon équilibre prix/service." },
+        { name: "BleuFlex Énergie", delta: 0.05, reason: "Offre flexible, service client solide." },
       ];
-      const best = offers.reduce(
-        (acc, offer) => {
-          const candidate = Math.max(0, Math.round(yearly * (1 - offer.delta)));
-          return candidate < acc.yearly ? { name: offer.name, yearly: candidate } : acc;
-        },
-        { name: offers[0].name, yearly: Math.max(0, Math.round(yearly * (1 - offers[0].delta))) }
-      );
+      const scored = offers
+        .map((offer) => ({
+          name: offer.name,
+          yearly: Math.max(0, Math.round(yearly * (1 - offer.delta))),
+          reason: offer.reason,
+        }))
+        .sort((a, b) => a.yearly - b.yearly);
+      const best = scored[0];
+      const second = scored[1];
 
       const savings = Math.max(0, yearly - best.yearly);
       const recommendation = savings >= 80 ? "changer" : "garder";
@@ -138,7 +141,15 @@ export default function EnergiePage() {
       }));
 
       setManualResult(yearly);
-      setUploadResult({ yearly, bestOffer: best, savings, recommendation });
+      setUploadResult({
+        yearly,
+        bestOffer: best,
+        secondOffer: second
+          ? { name: second.name, yearly: second.yearly, reason: second.reason }
+          : undefined,
+        savings,
+        recommendation,
+      });
       if (typeof window !== "undefined") {
         window.localStorage.setItem(
           "opticash:energy-context",
@@ -153,6 +164,9 @@ export default function EnergiePage() {
             monthlySubElec: extracted.monthlySubElec,
             yearly,
             bestOffer: best,
+            secondOffer: second
+              ? { name: second.name, yearly: second.yearly, reason: second.reason }
+              : undefined,
             savings,
             recommendation,
           })
@@ -192,20 +206,28 @@ export default function EnergiePage() {
     }).format(yearly);
     toast.success(`Ton coût annuel actuel estimé : ${formatted}`);
     const offers = [
-      { name: "Voltix Fixe 12M", delta: 0.12 },
-      { name: "ÉlecZen Indexé", delta: 0.08 },
-      { name: "BleuFlex Énergie", delta: 0.05 },
+      { name: "Voltix Fixe 12M", delta: 0.12, reason: "Offre fixe 12 mois, prix stable." },
+      { name: "ÉlecZen Indexé", delta: 0.08, reason: "Indexé TRV, bon équilibre prix/service." },
+      { name: "BleuFlex Énergie", delta: 0.05, reason: "Offre flexible, service client solide." },
     ];
-    const best = offers.reduce(
-      (acc, offer) => {
-        const candidate = Math.max(0, Math.round(yearly * (1 - offer.delta)));
-        return candidate < acc.yearly ? { name: offer.name, yearly: candidate } : acc;
-      },
-      { name: offers[0].name, yearly: Math.max(0, Math.round(yearly * (1 - offers[0].delta))) }
-    );
+    const scored = offers
+      .map((offer) => ({
+        name: offer.name,
+        yearly: Math.max(0, Math.round(yearly * (1 - offer.delta))),
+        reason: offer.reason,
+      }))
+      .sort((a, b) => a.yearly - b.yearly);
+    const best = scored[0];
+    const second = scored[1];
     const savings = Math.max(0, yearly - best.yearly);
     const recommendation = savings >= 80 ? "changer" : "garder";
-    setUploadResult({ yearly, bestOffer: best, savings, recommendation });
+    setUploadResult({
+      yearly,
+      bestOffer: best,
+      secondOffer: second ? { name: second.name, yearly: second.yearly, reason: second.reason } : undefined,
+      savings,
+      recommendation,
+    });
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         "opticash:energy-context",
@@ -220,6 +242,9 @@ export default function EnergiePage() {
           monthlySubElec: manual.monthlySubElec,
           yearly,
           bestOffer: best,
+          secondOffer: second
+            ? { name: second.name, yearly: second.yearly, reason: second.reason }
+            : undefined,
           savings,
           recommendation,
         })
