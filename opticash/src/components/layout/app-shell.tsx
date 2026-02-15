@@ -155,7 +155,9 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
             <Link href="/import/csv">Refaire plan OptiCash</Link>
           </Button>
           <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-600" asChild>
-            <Link href="/plan?tax=1">{taxBoosted ? "Refaire boost impôts" : "Lancer Impôts Boost"}</Link>
+            <Link href="/impots-boost">
+              {taxBoosted ? "Refaire boost impôts" : "Lancer Impôts Boost"}
+            </Link>
           </Button>
           <Button
             size="sm"
