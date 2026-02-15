@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type ManualForm = {
   customerType: "particulier" | "professionnel";
@@ -138,6 +139,25 @@ export default function EnergiePage() {
 
       setManualResult(yearly);
       setUploadResult({ yearly, bestOffer: best, savings, recommendation });
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "opticash:energy-context",
+          JSON.stringify({
+            type: "energy",
+            source: "upload",
+            customerType: manual.customerType,
+            postalCode: extracted.postalCode,
+            optionTarif: extracted.optionTarif,
+            yearlyKwh: extracted.yearlyKwh,
+            priceKwhBase: extracted.priceKwhBase,
+            monthlySubElec: extracted.monthlySubElec,
+            yearly,
+            bestOffer: best,
+            savings,
+            recommendation,
+          })
+        );
+      }
 
       setAnalyzing(false);
       const formatted = new Intl.NumberFormat("fr-FR", {
@@ -171,10 +191,40 @@ export default function EnergiePage() {
       maximumFractionDigits: 0,
     }).format(yearly);
     toast.success(`Ton coût annuel actuel estimé : ${formatted}`);
-    const url = `https://comparateur.energie-info.fr/?code_postal=${encodeURIComponent(
-      manual.postalCode
-    )}&conso=${encodeURIComponent(yearlyKwh)}&option=${encodeURIComponent(manual.optionTarif)}`;
-    window.open(url, "_blank");
+    const offers = [
+      { name: "Voltix Fixe 12M", delta: 0.12 },
+      { name: "ÉlecZen Indexé", delta: 0.08 },
+      { name: "BleuFlex Énergie", delta: 0.05 },
+    ];
+    const best = offers.reduce(
+      (acc, offer) => {
+        const candidate = Math.max(0, Math.round(yearly * (1 - offer.delta)));
+        return candidate < acc.yearly ? { name: offer.name, yearly: candidate } : acc;
+      },
+      { name: offers[0].name, yearly: Math.max(0, Math.round(yearly * (1 - offers[0].delta))) }
+    );
+    const savings = Math.max(0, yearly - best.yearly);
+    const recommendation = savings >= 80 ? "changer" : "garder";
+    setUploadResult({ yearly, bestOffer: best, savings, recommendation });
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        "opticash:energy-context",
+        JSON.stringify({
+          type: "energy",
+          source: "manual",
+          customerType: manual.customerType,
+          postalCode: manual.postalCode,
+          optionTarif: manual.optionTarif,
+          yearlyKwh,
+          priceKwhBase: manual.priceKwhBase,
+          monthlySubElec: manual.monthlySubElec,
+          yearly,
+          bestOffer: best,
+          savings,
+          recommendation,
+        })
+      );
+    }
   };
 
   return (
@@ -289,8 +339,8 @@ export default function EnergiePage() {
                   Ces chiffres sont une simulation basée sur des données marché typiques de février
                   2026.
                 </div>
-                <Button variant="outline" size="sm">
-                  En savoir plus
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/energie/details">En savoir plus</Link>
                 </Button>
                 <div className="rounded-md border border-muted bg-white p-3 text-xs text-muted-foreground">
                   <p>
