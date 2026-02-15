@@ -103,7 +103,7 @@ export default function EnergiePage() {
     }
     setAnalyzing(true);
     toast.message("Analyse en cours...");
-    setTimeout(() => {
+    setTimeout(async () => {
       const extracted = {
         postalCode: manual.postalCode || "59000",
         optionTarif: manual.optionTarif || "base",
