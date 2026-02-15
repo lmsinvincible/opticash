@@ -96,7 +96,7 @@ export default function EnergiePage() {
     }
   };
 
-  const handleAnalyzeUpload = () => {
+  const handleAnalyzeUpload = async () => {
     if (!file) {
       toast.error("Ajoute une facture d'énergie.");
       return;
