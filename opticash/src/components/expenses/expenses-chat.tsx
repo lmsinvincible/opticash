@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Send, X } from "lucide-react";
 import { toast } from "sonner";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -136,32 +137,48 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
   };
 
   const ChatBody = (
-    <div ref={containerRef} id="expenses-chat" className="flex h-full flex-col gap-3">
-      <div className="flex-1 space-y-2 overflow-auto rounded-md border p-3 text-sm text-muted-foreground">
-        {chatMessages.map((msg, index) => (
-          <div
-            key={`${msg.role}-${index}`}
-            className={
-              msg.role === "user"
-                ? "rounded-md bg-muted/40 p-2 text-foreground"
-                : "rounded-md bg-emerald-50/60 p-2 text-emerald-900"
-            }
-          >
-            {msg.content}
-          </div>
-        ))}
+    <div ref={containerRef} id="expenses-chat" className="flex h-full flex-col">
+      <div className="flex-1 overflow-auto rounded-xl border bg-white px-4 py-4 text-[15px] leading-relaxed text-gray-900">
+        <div className="mb-4 flex items-center justify-center gap-3 text-xs text-gray-400">
+          <div className="h-px w-12 bg-gray-200" />
+          Début de conversation
+          <div className="h-px w-12 bg-gray-200" />
+        </div>
+        <div className="space-y-3">
+          {chatMessages.map((msg, index) => (
+            <div
+              key={`${msg.role}-${index}`}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] px-4 py-3 ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl"
+                    : "bg-gray-100 text-gray-900 rounded-tr-2xl rounded-tl-2xl rounded-br-2xl"
+                } transition-all duration-200 ease-out`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="flex gap-2">
+      <div className="mt-3 flex items-center gap-2 rounded-full border bg-white px-3 py-2 shadow-sm">
         <input
           ref={inputRef}
-          className="flex-1 rounded-md border px-3 py-2 text-sm"
+          className="flex-1 rounded-full border-none bg-gray-100 px-4 py-2 text-sm placeholder:text-gray-500 focus:outline-none"
           placeholder="Pose ta question…"
           value={chatInput}
           onChange={(event) => setChatInput(event.target.value)}
         />
-        <Button size="sm" onClick={handleChatSend} disabled={chatLoading}>
-          {chatLoading ? "Analyse..." : "Envoyer"}
-        </Button>
+        <button
+          type="button"
+          onClick={handleChatSend}
+          disabled={chatLoading}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-60"
+        >
+          <Send className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -181,19 +198,19 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
         {isMobileOpen && (
           <div className="fixed inset-0 z-50 flex items-end bg-black/30">
             <div className="w-full rounded-t-2xl bg-background p-4 shadow-lg">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">{title}</h3>
+              <div className="mb-3 flex items-center justify-between rounded-xl border bg-blue-50 px-3 py-2">
+                <h3 className="text-sm font-semibold">Assistant OptiCash</h3>
                 <button
-                  className="text-sm text-muted-foreground"
+                  className="rounded-full p-1 text-gray-500 hover:bg-gray-200"
                   onClick={() => {
                     setIsMobileOpen(false);
                     setIsOpen(false);
                   }}
                 >
-                  Fermer
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="h-72">{ChatBody}</div>
+              <div className="h-[70vh]">{ChatBody}</div>
             </div>
           </div>
         )}
@@ -211,19 +228,19 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
         Chat IA
       </button>
       {isOpen ? (
-        <aside className="fixed right-6 top-28 z-30 hidden h-[70vh] w-80 flex-col gap-3 lg:flex">
-          <div className="rounded-xl border bg-background p-4 shadow-lg">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">{title}</h3>
+        <aside className="fixed right-6 top-24 z-30 hidden h-[72vh] w-[380px] flex-col gap-3 lg:flex">
+          <div className="rounded-2xl border bg-background p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between rounded-xl border bg-blue-50 px-3 py-2">
+              <h3 className="text-base font-semibold">Assistant OptiCash</h3>
               <button
                 type="button"
-                className="text-xs text-muted-foreground"
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-200"
                 onClick={() => setIsOpen(false)}
               >
-                Fermer
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="h-[58vh]">{ChatBody}</div>
+            <div className="h-[60vh]">{ChatBody}</div>
           </div>
         </aside>
       ) : null}
