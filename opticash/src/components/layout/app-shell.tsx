@@ -162,7 +162,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
             className="bg-blue-800 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-900"
             asChild
           >
-            <Link href="/energie">⚡ Énergie</Link>
+            <Link href="/energie">Analyser facture ⚡</Link>
           </Button>
         </aside>
 
