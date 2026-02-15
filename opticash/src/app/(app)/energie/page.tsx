@@ -73,9 +73,12 @@ export default function EnergiePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [manualResult, setManualResult] = useState<number | null>(null);
-  const [uploadResult, setUploadResult] = useState<{ yearly: number; savings: number } | null>(
-    null
-  );
+  const [uploadResult, setUploadResult] = useState<{
+    yearly: number;
+    bestOffer: { name: string; yearly: number };
+    savings: number;
+    recommendation: "changer" | "garder";
+  } | null>(null);
 
   const isPdf = useMemo(() => (file ? file.type === "application/pdf" : false), [file]);
   const isImage = useMemo(() => (file ? file.type.startsWith("image/") : false), [file]);
@@ -107,7 +110,22 @@ export default function EnergiePage() {
       };
       const yearly =
         extracted.monthlySubElec * 12 + extracted.yearlyKwh * extracted.priceKwhBase;
-      const savings = Math.round(yearly * 0.08);
+
+      const offers = [
+        { name: "Voltix Fixe 12M", delta: 0.12 },
+        { name: "ÉlecZen Indexé", delta: 0.08 },
+        { name: "BleuFlex Énergie", delta: 0.05 },
+      ];
+      const best = offers.reduce(
+        (acc, offer) => {
+          const candidate = Math.max(0, Math.round(yearly * (1 - offer.delta)));
+          return candidate < acc.yearly ? { name: offer.name, yearly: candidate } : acc;
+        },
+        { name: offers[0].name, yearly: Math.max(0, Math.round(yearly * (1 - offers[0].delta))) }
+      );
+
+      const savings = Math.max(0, yearly - best.yearly);
+      const recommendation = savings >= 80 ? "changer" : "garder";
 
       setManual((prev) => ({
         ...prev,
@@ -119,7 +137,7 @@ export default function EnergiePage() {
       }));
 
       setManualResult(yearly);
-      setUploadResult({ yearly, savings });
+      setUploadResult({ yearly, bestOffer: best, savings, recommendation });
 
       setAnalyzing(false);
       const formatted = new Intl.NumberFormat("fr-FR", {
@@ -128,13 +146,6 @@ export default function EnergiePage() {
         maximumFractionDigits: 0,
       }).format(yearly);
       toast.success(`Analyse terminée. Coût annuel estimé : ${formatted}`);
-
-      const url = `https://comparateur.energie-info.fr/?code_postal=${encodeURIComponent(
-        extracted.postalCode
-      )}&conso=${encodeURIComponent(extracted.yearlyKwh)}&option=${encodeURIComponent(
-        extracted.optionTarif
-      )}`;
-      window.open(url, "_blank");
     }, 2800);
   };
 
@@ -230,24 +241,68 @@ export default function EnergiePage() {
               {analyzing ? "Analyse en cours..." : "Analyser cette facture"}
             </Button>
             {uploadResult ? (
-              <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-                <div className="font-medium text-foreground">Résultat estimatif (simulation)</div>
-                <p className="mt-2">
-                  Coût annuel actuel estimé :{" "}
-                  {new Intl.NumberFormat("fr-FR", {
-                    style: "currency",
-                    currency: "EUR",
-                    maximumFractionDigits: 0,
-                  }).format(uploadResult.yearly)}
-                </p>
-                <p className="mt-2">
-                  Économie potentielle estimée :{" "}
+              <div className="space-y-3 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+                <div className="font-semibold text-foreground">
+                  Résultat estimatif (simulation)
+                </div>
+                <div>
+                  Ton coût annuel actuel estimé :{" "}
+                  <span className="font-medium text-foreground">
+                    {new Intl.NumberFormat("fr-FR", {
+                      style: "currency",
+                      currency: "EUR",
+                      maximumFractionDigits: 0,
+                    }).format(uploadResult.yearly)}
+                  </span>
+                </div>
+                <div>
+                  Meilleure offre simulée du jour :{" "}
+                  <span className="font-medium text-foreground">
+                    {new Intl.NumberFormat("fr-FR", {
+                      style: "currency",
+                      currency: "EUR",
+                      maximumFractionDigits: 0,
+                    }).format(uploadResult.bestOffer.yearly)}
+                  </span>{" "}
+                  chez <span className="font-medium text-foreground">{uploadResult.bestOffer.name}</span>
+                </div>
+                <div
+                  className={`font-medium ${
+                    uploadResult.savings >= 80 ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  Économie potentielle :{" "}
                   {new Intl.NumberFormat("fr-FR", {
                     style: "currency",
                     currency: "EUR",
                     maximumFractionDigits: 0,
                   }).format(uploadResult.savings)}
-                </p>
+                  /an
+                </div>
+                <div className="font-medium text-foreground">
+                  Recommandation :{" "}
+                  {uploadResult.recommendation === "changer"
+                    ? "Changer maintenant"
+                    : "Ton offre reste intéressante"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Ces chiffres sont une simulation basée sur des données marché typiques de février
+                  2026.
+                </div>
+                <Button variant="outline" size="sm">
+                  En savoir plus
+                </Button>
+                <div className="rounded-md border border-muted bg-white p-3 text-xs text-muted-foreground">
+                  <p>
+                    Les prix du marché de l&apos;énergie changent plusieurs fois par semaine, voire
+                    plusieurs fois par jour. Ce résultat est une estimation à l&apos;instant T.
+                  </p>
+                  <p className="mt-2">
+                    Meilleur moment pour changer de fournisseur : avant 18h en semaine → traitement
+                    souvent le jour même. Préavis maximum 1 mois pour particulier, vérifier ton
+                    contrat si professionnel.
+                  </p>
+                </div>
               </div>
             ) : null}
           </CardContent>
