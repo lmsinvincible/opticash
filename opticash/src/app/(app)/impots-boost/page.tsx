@@ -127,6 +127,10 @@ export default function ImpotsBoostPage() {
         (acc, item) => acc + Number(item.gain_estimated_yearly_cents || 0),
         0
       );
+      const summaryItems = (payload.items ?? []).map((item) => ({
+        title: item.action_title,
+        gain: Math.round(Number(item.gain_estimated_yearly_cents || 0) / 100),
+      }));
       setChatContext({
         salary,
         km,
@@ -134,6 +138,21 @@ export default function ImpotsBoostPage() {
         donations,
         totalGain: Math.round(totalGain / 100),
       });
+      try {
+        await fetch("/api/uploads/impots", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            items: summaryItems,
+            totalGain: Math.round(totalGain / 100),
+          }),
+        });
+      } catch {
+        // ignore history save failure
+      }
       setProgress(100);
       toast.success("Analyse terminée.");
     } catch (err) {

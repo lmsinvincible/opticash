@@ -37,7 +37,7 @@ export default function ImportsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<UploadResponse | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [tab, setTab] = useState<"opticash" | "factures">("opticash");
+  const [tab, setTab] = useState<"opticash" | "factures" | "impots">("opticash");
 
   useEffect(() => {
     const load = async () => {
@@ -70,6 +70,10 @@ export default function ImportsPage() {
   );
   const factureItems = useMemo(
     () => items.filter((item) => item.kind === "facture"),
+    [items]
+  );
+  const impotsItems = useMemo(
+    () => items.filter((item) => item.kind === "impots"),
     [items]
   );
 
@@ -164,6 +168,13 @@ export default function ImportsPage() {
             >
               Imports factures
             </Button>
+            <Button
+              size="sm"
+              variant={tab === "impots" ? "default" : "outline"}
+              onClick={() => setTab("impots")}
+            >
+              Impôts Boost
+            </Button>
           </div>
           {loading ? (
             <div className="text-sm text-muted-foreground">Chargement...</div>
@@ -171,16 +182,28 @@ export default function ImportsPage() {
             <div className="text-sm text-muted-foreground">Aucun import enregistré.</div>
           ) : tab === "factures" && factureItems.length === 0 ? (
             <div className="text-sm text-muted-foreground">Aucune facture enregistrée.</div>
+          ) : tab === "impots" && impotsItems.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Aucun Impôts Boost enregistré.</div>
           ) : (
             <div className="space-y-4">
-              {(tab === "opticash" ? opticashItems : factureItems).map((item) => (
+              {(tab === "opticash"
+                ? opticashItems
+                : tab === "factures"
+                ? factureItems
+                : impotsItems
+              ).map((item) => (
                 <div
                   key={item.id}
                   className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="space-y-1">
                     <div className="text-sm font-medium">
-                      {item.original_name ?? (item.kind === "facture" ? "Facture énergie" : "Import CSV")}
+                      {item.original_name ??
+                        (item.kind === "facture"
+                          ? "Facture énergie"
+                          : item.kind === "impots"
+                          ? "Impôts Boost"
+                          : "Import CSV")}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {formatDate(item.created_at)} • {item.status}
