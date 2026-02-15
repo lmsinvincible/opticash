@@ -45,7 +45,7 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
     }
   }, [chatMessages.length]);
 
-  const openChat = () => {
+  const openChat = (prompt?: string) => {
     if (isMobile) {
       setIsOpen(true);
       setIsMobileOpen(true);
@@ -53,10 +53,17 @@ export function ExpensesChat({ summary, isPremium = true, title = "Assistant dé
       setIsOpen(true);
       setTimeout(() => inputRef.current?.focus(), 200);
     }
+    if (prompt) {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: prompt }]);
+    }
   };
 
   useEffect(() => {
-    const handler = () => openChat();
+    const handler = (event?: Event) => {
+      const detail =
+        event && "detail" in event ? (event as CustomEvent<{ prompt?: string }>).detail : undefined;
+      openChat(detail?.prompt);
+    };
     window.addEventListener("opticash:open-chat", handler);
     return () => window.removeEventListener("opticash:open-chat", handler);
   }, [isMobile]);

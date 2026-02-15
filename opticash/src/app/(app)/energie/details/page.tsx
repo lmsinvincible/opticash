@@ -35,6 +35,18 @@ export default function EnergyDetailsPage() {
     }
   }, []);
 
+  const money = (value?: number) =>
+    new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 0,
+    }).format(value ?? 0);
+
+  const isPro = context?.customerType === "professionnel";
+  const currentCost = context?.yearly ?? 0;
+  const bestOfferCost = context?.bestOffer?.yearly ?? Math.max(0, Math.round(currentCost * 0.9));
+  const savings = context?.savings ?? Math.max(0, currentCost - bestOfferCost);
+
   const summary = useMemo(
     () => ({
       type: "energy",
@@ -56,6 +68,54 @@ export default function EnergyDetailsPage() {
           Synthèse claire pour comprendre les prix, les offres et les démarches.
         </p>
       </div>
+
+      <Card className="space-y-4 border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold text-foreground">
+            {isPro ? "Pourquoi changer d’offre pro maintenant ?" : "Pourquoi changer d’offre maintenant ?"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Les prix du marché de l’énergie changent plusieurs fois par semaine, voire par jour
+            pour les offres spot (marché EPEX). Avec ton coût actuel de{" "}
+            <span className="font-semibold text-foreground">{money(currentCost)} / an</span>, la
+            meilleure offre du jour est à{" "}
+            <span className="font-semibold text-foreground">{money(bestOfferCost)} / an</span>, soit
+            une économie immédiate de{" "}
+            <span className="font-semibold text-emerald-700">{money(savings)} / an</span>.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            C’est le moment de changer : les prix risquent de monter rapidement. Agis vite pour
+            verrouiller une offre avantageuse.
+          </p>
+        </div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm font-semibold text-emerald-800">
+          {money(savings)} d’économie / an
+        </div>
+        {isPro ? (
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+            <li>Vérifie ton contrat actuel (échéance, engagement, préavis – souvent 3 mois).</li>
+            <li>Compare les offres pro sur energie-info.fr ou via un courtier.</li>
+            <li>
+              Contacte un courtier spécialisé pour des prix négociés :
+              <div className="mt-2 space-y-1 text-sm text-foreground">
+                <div>Selectra Pro (pro.selectra.info / 09 75 18 41 65)</div>
+                <div>HelloWatt Pro (pro.hellowatt.fr / 01 76 36 19 13)</div>
+                <div>Opéra Énergie (opera-energie.com / 04 72 44 97 50)</div>
+              </div>
+            </li>
+            <li>Choisis et valide – le courtier s’occupe de tout sans coupure.</li>
+          </ol>
+        ) : (
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+            <li>Compare les offres sur energie-info.fr.</li>
+            <li>
+              Choisis un nouveau fournisseur (gratuit, sans coupure, il s’occupe de la résiliation).
+            </li>
+            <li>Fournis ton numéro compteur (PDL pour élec, PCE pour gaz).</li>
+            <li>Valide – c’est fait en 5 min ! Préavis max 1 mois.</li>
+          </ol>
+        )}
+      </Card>
 
       <Card className="space-y-4 p-6">
         <h2 className="text-lg font-semibold">Fonctionnement du marché de l’énergie</h2>
@@ -99,7 +159,24 @@ export default function EnergyDetailsPage() {
           className="bg-blue-700 text-white shadow-lg transition hover:scale-[1.02] hover:bg-blue-800"
           onClick={() => {
             if (typeof window !== "undefined") {
-              window.dispatchEvent(new Event("opticash:open-chat"));
+              const prompt = [
+                "Salut ! Je suis là pour t’aider sur le marché de l’énergie. Voici tes infos actuelles :",
+                `Coût annuel estimé : ${money(currentCost)}`,
+                `Meilleure offre simulée : ${money(bestOfferCost)} / an chez ${
+                  context?.bestOffer?.name ?? "Offre simulée"
+                }`,
+                `Économie potentielle : ${money(savings)} / an`,
+                `Statut : ${isPro ? "professionnel" : "particulier"}`,
+                isPro
+                  ? "Pour pro : je peux te renvoyer vers des courtiers spécialisés avec sites/tél."
+                  : "",
+                "Pose-moi une question, par exemple : “Comment changer d’offre ?” ou “Pourquoi les prix changent si vite ?”",
+              ]
+                .filter(Boolean)
+                .join("\n");
+              window.dispatchEvent(
+                new CustomEvent("opticash:open-chat", { detail: { prompt } })
+              );
             }
           }}
         >
