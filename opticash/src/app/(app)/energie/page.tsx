@@ -73,6 +73,9 @@ export default function EnergiePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [manualResult, setManualResult] = useState<number | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ yearly: number; savings: number } | null>(
+    null
+  );
 
   const isPdf = useMemo(() => (file ? file.type === "application/pdf" : false), [file]);
   const isImage = useMemo(() => (file ? file.type.startsWith("image/") : false), [file]);
@@ -95,9 +98,44 @@ export default function EnergiePage() {
     setAnalyzing(true);
     toast.message("Analyse en cours...");
     setTimeout(() => {
+      const extracted = {
+        postalCode: manual.postalCode || "59000",
+        optionTarif: manual.optionTarif || "base",
+        yearlyKwh: Number(manual.yearlyKwh || 3500),
+        priceKwhBase: Number(manual.priceKwhBase || 0.2516),
+        monthlySubElec: Number(manual.monthlySubElec || 13.5),
+      };
+      const yearly =
+        extracted.monthlySubElec * 12 + extracted.yearlyKwh * extracted.priceKwhBase;
+      const savings = Math.round(yearly * 0.08);
+
+      setManual((prev) => ({
+        ...prev,
+        postalCode: prev.postalCode || extracted.postalCode,
+        optionTarif: prev.optionTarif || (extracted.optionTarif as ManualForm["optionTarif"]),
+        yearlyKwh: prev.yearlyKwh || String(extracted.yearlyKwh),
+        priceKwhBase: prev.priceKwhBase || String(extracted.priceKwhBase),
+        monthlySubElec: prev.monthlySubElec || String(extracted.monthlySubElec),
+      }));
+
+      setManualResult(yearly);
+      setUploadResult({ yearly, savings });
+
       setAnalyzing(false);
-      toast.success("Fonctionnalité en cours de développement – comparaison bientôt disponible !");
-    }, 3500);
+      const formatted = new Intl.NumberFormat("fr-FR", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 0,
+      }).format(yearly);
+      toast.success(`Analyse terminée. Coût annuel estimé : ${formatted}`);
+
+      const url = `https://comparateur.energie-info.fr/?code_postal=${encodeURIComponent(
+        extracted.postalCode
+      )}&conso=${encodeURIComponent(extracted.yearlyKwh)}&option=${encodeURIComponent(
+        extracted.optionTarif
+      )}`;
+      window.open(url, "_blank");
+    }, 2800);
   };
 
   const handleManualCompare = () => {
@@ -191,6 +229,27 @@ export default function EnergiePage() {
             <Button onClick={handleAnalyzeUpload} disabled={analyzing}>
               {analyzing ? "Analyse en cours..." : "Analyser cette facture"}
             </Button>
+            {uploadResult ? (
+              <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+                <div className="font-medium text-foreground">Résultat estimatif (simulation)</div>
+                <p className="mt-2">
+                  Coût annuel actuel estimé :{" "}
+                  {new Intl.NumberFormat("fr-FR", {
+                    style: "currency",
+                    currency: "EUR",
+                    maximumFractionDigits: 0,
+                  }).format(uploadResult.yearly)}
+                </p>
+                <p className="mt-2">
+                  Économie potentielle estimée :{" "}
+                  {new Intl.NumberFormat("fr-FR", {
+                    style: "currency",
+                    currency: "EUR",
+                    maximumFractionDigits: 0,
+                  }).format(uploadResult.savings)}
+                </p>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
