@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   const { data: uploads, error: uploadsError } = await supabaseAdmin
     .from("uploads")
-    .select("id, original_name, created_at, status, storage_path, columns, preview")
+    .select("id, kind, original_name, created_at, status, storage_path, columns, preview")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -54,6 +54,7 @@ export async function GET(request: Request) {
         .createSignedUrl(upload.storage_path, 60);
       return {
         id: upload.id,
+        kind: upload.kind ?? "csv",
         original_name: upload.original_name,
         created_at: upload.created_at,
         status: upload.status,

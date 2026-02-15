@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 type UploadItem = {
   id: string;
+  kind: string;
   original_name: string | null;
   created_at: string;
   status: string;
@@ -36,6 +37,7 @@ export default function ImportsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<UploadResponse | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [tab, setTab] = useState<"opticash" | "factures">("opticash");
 
   useEffect(() => {
     const load = async () => {
@@ -62,6 +64,14 @@ export default function ImportsPage() {
   }, []);
 
   const items = useMemo(() => data?.items ?? [], [data]);
+  const opticashItems = useMemo(
+    () => items.filter((item) => item.kind === "csv"),
+    [items]
+  );
+  const factureItems = useMemo(
+    () => items.filter((item) => item.kind === "facture"),
+    [items]
+  );
 
   const handleDownloadSummary = (item: UploadItem) => {
     const csv = toCsv(item.columns ?? [], item.preview ?? []);
@@ -126,7 +136,7 @@ export default function ImportsPage() {
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <div>
-                {data?.items.length ?? 0} import(s) affichés sur un maximum de {data?.limit ?? 0}.
+                {items.length} import(s) affichés sur un maximum de {data?.limit ?? 0}.
               </div>
               <div>({data?.total ?? 0} au total)</div>
             </div>
@@ -139,20 +149,38 @@ export default function ImportsPage() {
           <CardTitle>Derniers imports</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={tab === "opticash" ? "default" : "outline"}
+              onClick={() => setTab("opticash")}
+            >
+              Imports OptiCash
+            </Button>
+            <Button
+              size="sm"
+              variant={tab === "factures" ? "default" : "outline"}
+              onClick={() => setTab("factures")}
+            >
+              Imports factures
+            </Button>
+          </div>
           {loading ? (
             <div className="text-sm text-muted-foreground">Chargement...</div>
-          ) : items.length === 0 ? (
+          ) : tab === "opticash" && opticashItems.length === 0 ? (
             <div className="text-sm text-muted-foreground">Aucun import enregistré.</div>
+          ) : tab === "factures" && factureItems.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Aucune facture enregistrée.</div>
           ) : (
             <div className="space-y-4">
-              {items.map((item) => (
+              {(tab === "opticash" ? opticashItems : factureItems).map((item) => (
                 <div
                   key={item.id}
                   className="flex flex-col gap-3 rounded-lg border p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="space-y-1">
                     <div className="text-sm font-medium">
-                      {item.original_name ?? "Import CSV"}
+                      {item.original_name ?? (item.kind === "facture" ? "Facture énergie" : "Import CSV")}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {formatDate(item.created_at)} • {item.status}
@@ -160,6 +188,11 @@ export default function ImportsPage() {
                     <div className="text-xs text-muted-foreground">
                       {item.preview?.length ?? 0} lignes de résumé
                     </div>
+                    {item.kind === "facture" && item.preview?.length ? (
+                      <div className="text-xs text-muted-foreground">
+                        {item.preview[0]?.[0]} : {item.preview[0]?.[1]}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button

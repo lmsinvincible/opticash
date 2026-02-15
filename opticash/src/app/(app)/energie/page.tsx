@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
 
 type ManualForm = {
   customerType: "particulier" | "professionnel";
@@ -171,6 +172,25 @@ export default function EnergiePage() {
             recommendation,
           })
         );
+      }
+      try {
+        const auth = await supabase.auth.getSession();
+        const token = auth.data.session?.access_token;
+        if (token) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("yearly", String(yearly));
+          formData.append("best_name", best.name);
+          formData.append("best_yearly", String(best.yearly));
+          formData.append("savings", String(savings));
+          await fetch("/api/uploads/facture", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+        }
+      } catch {
+        // ignore history save failure
       }
 
       setAnalyzing(false);
