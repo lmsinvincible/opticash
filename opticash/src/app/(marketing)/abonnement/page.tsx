@@ -51,6 +51,11 @@ export default function AbonnementPage() {
   return (
     <div className="min-h-screen bg-muted/40 px-6 py-16">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" asChild>
+            <Link href="/dashboard">← Retour</Link>
+          </Button>
+        </div>
         <header className="space-y-3 text-center">
           <h1 className="text-3xl font-semibold md:text-4xl">
             Choisis ton abonnement OptiCash
