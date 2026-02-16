@@ -13,7 +13,6 @@ const navItems = [
   { label: "Dashboard", href: routes.app.dashboard },
   { label: "Plan", href: routes.app.plan },
   { label: "Findings", href: routes.app.findings },
-  { label: "Importer CSV", href: "/import/csv" },
   { label: "Settings", href: routes.app.settings },
 ];
 
