@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { TIER_LIMITS, resolveTier } from "@/lib/subscription";
 
 type ProfileForm = {
   first_name: string;
@@ -30,6 +31,7 @@ type ProfileForm = {
   consent_rgpd: boolean;
   is_premium: boolean;
   premium_until: string | null;
+  plan_tier?: string | null;
 };
 
 const emptyForm: ProfileForm = {
@@ -53,6 +55,7 @@ const emptyForm: ProfileForm = {
   consent_rgpd: false,
   is_premium: false,
   premium_until: null,
+  plan_tier: "free",
 };
 
 export default function ProfilePage() {
@@ -86,7 +89,7 @@ export default function ProfilePage() {
         .select(
           `first_name,last_name,birth_date,gender,marital_status,children_count,postal_code,
            phone,city,has_disability,profession,monthly_income_eur,commute_km_year,
-           has_per,has_assurance_vie,has_pea,avatar_url,consent_rgpd,is_premium,premium_until`
+           has_per,has_assurance_vie,has_pea,avatar_url,consent_rgpd,is_premium,premium_until,plan_tier`
         )
         .eq("id", userId)
         .maybeSingle();
@@ -609,8 +612,24 @@ export default function ProfilePage() {
           <CardTitle>Abonnement</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <div>Statut : {profile.is_premium ? "Premium" : "Gratuit"}</div>
-          {profile.premium_until ? <div>Fin : {profile.premium_until}</div> : null}
+          {(() => {
+            const tier = resolveTier(profile);
+            const label = tier === "super" ? "Super Premium" : tier === "premium" ? "Premium" : "Gratuit";
+            const limits = TIER_LIMITS[tier];
+            return (
+              <>
+                <div>Statut : {label}</div>
+                {profile.premium_until ? <div>Fin : {profile.premium_until}</div> : null}
+                <div className="text-xs text-muted-foreground">
+                  Limites : CSV {limits.csv === Infinity ? "illimité" : `${limits.csv}/mois`}, Impôts{" "}
+                  {limits.impots === Infinity ? "illimité" : `${limits.impots}/mois`}, Facture{" "}
+                  {limits.facture === Infinity ? "illimité" : `${limits.facture}/mois`}, Chat{" "}
+                  {limits.chat === Infinity ? "illimité" : `${limits.chat}/mois`}, Historique{" "}
+                  {limits.history === Infinity ? "illimité" : `${limits.history} imports`}
+                </div>
+              </>
+            );
+          })()}
           <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading}>
             {portalLoading ? "Ouverture..." : "Gérer mon abonnement"}
           </Button>

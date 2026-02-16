@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { TIER_LIMITS, resolveTier, monthStartIso } from "@/lib/subscription";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -13,6 +14,31 @@ export async function POST(request: NextRequest) {
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
   if (userError || !userData.user) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+  }
+
+  const userId = userData.user.id;
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("is_premium, is_admin, plan_tier")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const isAdmin = Boolean(profile?.is_admin);
+  const tier = resolveTier(profile ?? undefined);
+  const limit = isAdmin ? Infinity : TIER_LIMITS[tier].chat;
+  if (Number.isFinite(limit)) {
+    const { count } = await supabaseAdmin
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("name", "chat_message")
+      .gte("created_at", monthStartIso());
+    if ((count ?? 0) >= limit) {
+      return NextResponse.json(
+        { error: "Limite mensuelle atteinte pour le chat IA." },
+        { status: 429 }
+      );
+    }
   }
 
   const payload = await request.json();
@@ -55,6 +81,11 @@ Règles de réponse :
 `;
 
   if (!OPENAI_API_KEY) {
+    await supabaseAdmin.from("events").insert({
+      user_id: userId,
+      name: "chat_message",
+      meta: { kind: "expenses", source: "fallback" },
+    });
     return NextResponse.json({
       reply:
         "Je peux résumer tes dépenses si l’IA est activée. Ajoute la clé OPENAI_API_KEY pour activer ce résumé.",
@@ -82,6 +113,11 @@ Règles de réponse :
 
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content ?? "Je n’ai pas pu répondre.";
+    await supabaseAdmin.from("events").insert({
+      user_id: userId,
+      name: "chat_message",
+      meta: { kind: summary?.type ?? "expenses" },
+    });
     return NextResponse.json({ reply });
   } catch {
     return NextResponse.json({ error: "AI request failed" }, { status: 500 });

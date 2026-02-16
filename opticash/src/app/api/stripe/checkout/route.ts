@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const getPriceId = (interval: string | undefined) => {
+const getPriceId = (plan: string | undefined, interval: string | undefined) => {
+  if (plan === "super") {
+    return process.env.STRIPE_PRICE_ID_SUPER_MONTHLY;
+  }
+  if (plan === "premium") {
+    return process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY ?? process.env.STRIPE_PRICE_ID_MONTHLY;
+  }
   if (interval === "yearly") return process.env.STRIPE_PRICE_ID_YEARLY;
   return process.env.STRIPE_PRICE_ID_MONTHLY;
 };
@@ -46,7 +52,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const interval = body?.interval as string | undefined;
-    const priceId = getPriceId(interval);
+    const plan = body?.plan as string | undefined;
+    const priceId = getPriceId(plan, interval);
 
     if (!priceId) {
       return NextResponse.json({ error: "Missing Stripe price id" }, { status: 500 });
@@ -62,7 +69,7 @@ export async function POST(request: NextRequest) {
       success_url: `${appUrl}/upgrade/success`,
       cancel_url: `${appUrl}/upgrade/cancel`,
       allow_promotion_codes: true,
-      metadata: { user_id: userId },
+      metadata: { user_id: userId, plan: plan ?? "premium" },
     });
 
     return NextResponse.json({ url: session.url });

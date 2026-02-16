@@ -24,18 +24,31 @@ export async function POST(request: NextRequest) {
     return new Response("Webhook signature verification failed", { status: 400 });
   }
 
+  const resolvePlanTier = (subscription: Stripe.Subscription) => {
+    const priceId = subscription.items.data[0]?.price?.id;
+    const premiumMonthly = process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY ?? process.env.STRIPE_PRICE_ID_MONTHLY;
+    const superMonthly = process.env.STRIPE_PRICE_ID_SUPER_MONTHLY;
+    const premiumYearly = process.env.STRIPE_PRICE_ID_YEARLY;
+    if (priceId && superMonthly && priceId === superMonthly) return "super";
+    if (priceId && premiumMonthly && priceId === premiumMonthly) return "premium";
+    if (priceId && premiumYearly && priceId === premiumYearly) return "premium";
+    return "free";
+  };
+
   const handleSubscriptionUpdate = async (subscription: Stripe.Subscription) => {
     const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
     const isActive = subscription.status === "active" || subscription.status === "trialing";
     const periodEnd = (subscription as Stripe.Subscription & { current_period_end?: number })
       .current_period_end;
     const premiumUntil = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+    const planTier = isActive ? resolvePlanTier(subscription) : "free";
 
     await supabaseAdmin
       .from("profiles")
       .update({
         is_premium: isActive,
         premium_until: isActive ? premiumUntil : null,
+        plan_tier: planTier,
       })
       .eq("stripe_customer_id", customerId);
   };

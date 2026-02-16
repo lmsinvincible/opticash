@@ -8,17 +8,19 @@ import { track } from "@/lib/events";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
+type PlanKey = "premium" | "super";
+
 export default function UpgradePage() {
-  const [loading, setLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
 
   useEffect(() => {
     void track("upgrade_viewed");
   }, []);
 
-  const handleCheckout = async (interval: "monthly" | "yearly") => {
-    setLoading(true);
+  const handleCheckout = async (plan: PlanKey) => {
+    setLoadingPlan(plan);
     try {
-      void track("upgrade_checkout_started", { interval });
+      void track("upgrade_checkout_started", { plan });
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) {
@@ -31,7 +33,7 @@ export default function UpgradePage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ plan }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -45,7 +47,7 @@ export default function UpgradePage() {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.error(message);
     } finally {
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
@@ -61,40 +63,68 @@ export default function UpgradePage() {
         </header>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {[
-            {
-              title: "Scans illimités",
-              body: "Importe autant de fichiers que nécessaire et compare tes économies.",
-            },
-            {
-              title: "Insights avancés",
-              body: "Accède aux explications détaillées et aux recommandations avancées.",
-            },
-            {
-              title: "Export PDF",
-              body: "Génère un plan partageable prêt à envoyer ou imprimer.",
-            },
-          ].map((item) => (
-            <Card key={item.title}>
-              <CardHeader>
-                <CardTitle className="text-base">{item.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{item.body}</CardContent>
-            </Card>
-          ))}
+          <Card className="border-muted">
+            <CardHeader>
+              <CardTitle className="text-base">Gratuit</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>Découvrir OptiCash gratuitement.</p>
+              <ul className="list-disc pl-5">
+                <li>OptiCash : 3 scans / mois</li>
+                <li>Impôts Boost : 1 analyse / mois</li>
+                <li>Facture énergie : 1 analyse / mois</li>
+                <li>Chat IA : 10 messages / mois</li>
+                <li>Historique : 10 imports</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/30">
+            <CardHeader>
+              <CardTitle className="text-base">Premium 1,99 € / mois</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <ul className="list-disc pl-5">
+                <li>OptiCash : 10 scans / mois</li>
+                <li>Impôts Boost : 3 analyses / mois</li>
+                <li>Facture énergie : 3 analyses / mois</li>
+                <li>Chat IA : 100 messages / mois</li>
+                <li>Historique : 20 imports</li>
+              </ul>
+              <Button onClick={() => handleCheckout("premium")} disabled={loadingPlan !== null}>
+                {loadingPlan === "premium" ? "Redirection..." : "Passer Premium"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/60">
+            <CardHeader>
+              <CardTitle className="text-base">Super Premium 4,99 € / mois</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <ul className="list-disc pl-5">
+                <li>OptiCash : illimité</li>
+                <li>Impôts Boost : illimité</li>
+                <li>Facture énergie : illimité</li>
+                <li>Chat IA : illimité</li>
+                <li>Historique : 50 imports</li>
+              </ul>
+              <Button
+                onClick={() => handleCheckout("super")}
+                disabled={loadingPlan !== null}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {loadingPlan === "super" ? "Redirection..." : "Passer Super"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Rejoindre la liste Premium</CardTitle>
+            <CardTitle>Besoin d’un plan entreprise ?</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => handleCheckout("monthly")} disabled={loading}>
-              {loading ? "Redirection..." : "Passer Premium (Mensuel)"}
-            </Button>
-            <Button variant="outline" onClick={() => handleCheckout("yearly")} disabled={loading}>
-              Annuel
-            </Button>
             <Button variant="ghost" asChild>
               <a href="mailto:hello@opticash.app">Contacte-nous</a>
             </Button>
