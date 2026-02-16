@@ -643,7 +643,7 @@ export default function ProfilePage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <div>Accède à tes derniers imports et télécharge les fichiers.</div>
           <Button asChild variant="outline" size="sm">
-            <a href="/imports">Voir l'historique</a>
+            <a href="/imports">Voir l&apos;historique</a>
           </Button>
         </CardContent>
       </Card>
