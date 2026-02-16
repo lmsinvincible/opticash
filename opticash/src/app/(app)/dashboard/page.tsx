@@ -35,6 +35,15 @@ type ScanRow = {
   created_at: string;
 };
 
+type UploadItem = {
+  id: string;
+  kind: "csv" | "facture" | "impots";
+  original_name: string | null;
+  created_at: string;
+  status: string | null;
+  preview: string[][];
+};
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +57,7 @@ export default function DashboardPage() {
   const [resettingDemo, setResettingDemo] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const [historyItems, setHistoryItems] = useState<UploadItem[]>([]);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -89,6 +99,20 @@ export default function DashboardPage() {
         setAllItems([]);
         setDemoActive(false);
       }
+
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (token) {
+        const historyResponse = await fetch("/api/uploads/history", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (historyResponse.ok) {
+          const payload = (await historyResponse.json()) as { items?: UploadItem[] };
+          if (mountedRef.current) {
+            setHistoryItems(payload.items ?? []);
+          }
+        }
+      }
     } catch (err) {
       if (!mountedRef.current) return;
       const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -124,6 +148,28 @@ export default function DashboardPage() {
 
   const demoSummary = useMemo(() => dashboardSummary, []);
   const demoItems = useMemo(() => planItems.slice(0, 3), []);
+
+  const latestByKind = useMemo(() => {
+    const sorted = [...historyItems].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return {
+      csv: sorted.find((item) => item.kind === "csv") ?? null,
+      facture: sorted.find((item) => item.kind === "facture") ?? null,
+      impots: sorted.find((item) => item.kind === "impots") ?? null,
+    };
+  }, [historyItems]);
+
+  const sumImpots = useMemo(() => {
+    if (!latestByKind.impots?.preview?.length) return 0;
+    return latestByKind.impots.preview.reduce((acc, row) => acc + Number(row[1] ?? 0), 0);
+  }, [latestByKind.impots]);
+
+  const factureField = (label: string) => {
+    const rows = latestByKind.facture?.preview ?? [];
+    const row = rows.find((item) => item[0] === label);
+    return row?.[1] ?? "";
+  };
 
   if (loading && loadingTimedOut) {
     return (
@@ -394,6 +440,74 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Derniers résultats</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <Card className="border-muted">
+            <CardHeader>
+              <CardTitle className="text-base">OptiCash (CSV)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {latestByKind.csv ? (
+                <>
+                  <div>Dernier import : {latestByKind.csv.original_name ?? "CSV"}</div>
+                  <div>Date : {new Date(latestByKind.csv.created_at).toLocaleDateString()}</div>
+                  <div>
+                    Gain estimé : {formatCents(Number(plan?.total_gain_estimated_yearly_cents ?? 0))}
+                  </div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/plan">Voir mon plan</Link>
+                  </Button>
+                </>
+              ) : (
+                <div>Aucun import CSV pour l’instant. Lance un scan OptiCash.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-muted">
+            <CardHeader>
+              <CardTitle className="text-base">Impôts Boost</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {latestByKind.impots ? (
+                <>
+                  <div>Date : {new Date(latestByKind.impots.created_at).toLocaleDateString()}</div>
+                  <div>Gain total estimé : {formatCents(sumImpots * 100)}</div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/impots-boost">Voir l’analyse</Link>
+                  </Button>
+                </>
+              ) : (
+                <div>Aucune analyse Impôts Boost pour l’instant.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-muted">
+            <CardHeader>
+              <CardTitle className="text-base">Facture énergie</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              {latestByKind.facture ? (
+                <>
+                  <div>Date : {new Date(latestByKind.facture.created_at).toLocaleDateString()}</div>
+                  <div>Coût annuel : {factureField("Coût annuel estimé") || "—"} €</div>
+                  <div>Économie : {factureField("Économie potentielle") || "—"} €</div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/energie">Voir la facture</Link>
+                  </Button>
+                </>
+              ) : (
+                <div>Aucune facture énergie analysée pour l’instant.</div>
+              )}
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
